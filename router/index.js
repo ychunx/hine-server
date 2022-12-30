@@ -1,5 +1,6 @@
 const express = require('express')
 const router = express.Router()
+const dbserver = require('../dao/dbserver')
 
 router.all('*', (req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*')
@@ -10,7 +11,8 @@ router.all('*', (req, res, next) => {
 })
 
 router.get('/', (req, res) => {
-    res.send(req.get('token'))
+    dbserver.findUser(res)
+    //res.send(req.get('token'))
 })
 
 module.exports = router
