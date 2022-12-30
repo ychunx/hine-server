@@ -6,7 +6,9 @@ const Schema = mongoose.Schema
 // 用户表
 const UserSchema = new Schema({
     email: {type: String},                                  // 邮箱
-    psw: {type: String},                                    // 密码
+    psw: {type: String},                                    // 加密后的密码
+    private: {type: String},                                // 加密后的私钥
+    public: {type: String},                                 // 加密后的公钥
     name: {type: String},                                   // 用户名
     sex: {type: String, default: 'asexual'},                // 性别
     birth: {type: Date},                                    // 生日
@@ -19,6 +21,7 @@ const UserSchema = new Schema({
 const FriendSchema = new Schema({
     userId: {type: Schema.Types.ObjectId, ref: 'User'},     // 用户id
     friendId: {type: Schema.Types.ObjectId, ref: 'User'},   // 好友id
+    remarks: {type: String},                                // 好友备注
     time: {type: Date},                                     // 关系形成时间
     state: {type: String},                                  // 好友状态，0好友，1非好友，2申请方
 })
