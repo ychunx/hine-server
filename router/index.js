@@ -1,5 +1,6 @@
 const express = require('express')
 const router = express.Router()
+
 const dbserver = require('../dao/dbserver')
 const emailserver = require('../dao/emailserver')
 
@@ -11,13 +12,6 @@ router.all('*', (req, res, next) => {
     next()
 })
 
-router.get('/', (req, res) => {
-    dbserver.findUser(res)
-    //res.send(req.get('token'))
-})
-
-router.post('/signup', (req, res) => {
-    emailserver.emailSignUp(req.body.address, res)
-})
+require('./signUp')(router)
 
 module.exports = router

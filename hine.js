@@ -5,6 +5,20 @@ const port = 3000
 const bodyParser = require('body-parser')
 app.use(bodyParser.json())
 
+// 响应数据中间件
+app.use((req, res, next) => {
+    // status = 0 为成功，status = 1 为失败
+    // 默认将 status 的值设置为 1，方便处理失败的情况
+    res.cc = (err, status = 1) => {
+        res.send({
+            status,
+            // 状态描述，判断 err 是 错误对象 还是 字符串
+            msg: err instanceof Error ? err.message : err,
+        })
+    }
+    next()
+})
+
 const router = require('./router')
 app.use('/api', router)
 
