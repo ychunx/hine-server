@@ -8,12 +8,12 @@ module.exports = (router) => {
     })
 
     // 查询用户名是否已被占用
-    router.post('/signup/nameinuse', (req, res) => {
-        dbserver.countUserName(req.body, res)
+    router.get('/signup/nameinuse/:name', (req, res) => {
+        dbserver.countUserName(req.params, res)
     })
 
     // 查询邮箱是否已被占用
-    router.post('/signup/emailinuse', (req, res) => {
-        dbserver.countUserEmail(req.body, res)
+    router.get('/signup/emailinuse/:email', (req, res) => {
+        dbserver.countUserEmail(req.params, res)
     })
 }

@@ -7,12 +7,12 @@ const Schema = mongoose.Schema
 const UserSchema = new Schema({
     email: {type: String},                                  // 邮箱
     psw: {type: String},                                    // 加密后的密码
-    private: {type: String},                                // 加密后的私钥
-    public: {type: String},                                 // 加密后的公钥
+    privateKey: {type: String},                                // 加密后的私钥
+    publicKey: {type: String},                                 // 加密后的公钥
     name: {type: String},                                   // 用户名
     sex: {type: String, default: 'asexual'},                // 性别
-    birth: {type: Date},                                    // 生日
-    signature: {type: String},                              // 个性签名
+    birth: {type: Date, default: new Date()},                                    // 生日
+    signature: {type: String, default: ''},                              // 个性签名
     imgUrl: {type: String, default: 'user.png'},            // 头像链接
     registerTime: {type: Date},                             // 注册时间
 })
