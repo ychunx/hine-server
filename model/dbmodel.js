@@ -12,7 +12,7 @@ const UserSchema = new Schema({
     name: {type: String},                                   // 用户名
     sex: {type: String, default: 'asexual'},                // 性别
     birth: {type: Date, default: new Date()},                                    // 生日
-    signature: {type: String, default: ''},                              // 个性签名
+    signature: {type: String, default: '这个人很懒'},                              // 个性签名
     imgUrl: {type: String, default: 'user.png'},            // 头像链接
     registerTime: {type: Date},                             // 注册时间
 })
@@ -21,7 +21,7 @@ const UserSchema = new Schema({
 const FriendSchema = new Schema({
     userId: {type: Schema.Types.ObjectId, ref: 'User'},     // 用户id
     friendId: {type: Schema.Types.ObjectId, ref: 'User'},   // 好友id
-    remarks: {type: String},                                // 好友备注
+    nickname: {type: String},                               // 好友备注
     time: {type: Date},                                     // 关系形成时间
     state: {type: String},                                  // 好友状态，0好友，1非好友，2申请方
 })

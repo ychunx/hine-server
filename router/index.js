@@ -13,5 +13,6 @@ router.all('*', (req, res, next) => {
 })
 
 require('./signUp')(router)
+require('./signIn')(router)
 
 module.exports = router
