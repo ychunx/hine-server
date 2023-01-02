@@ -16,4 +16,9 @@ module.exports = (router) => {
             dbserver.matchUser(data, 'name', res)
         }
     })
+
+    router.get('/signin/getUserInfo', (req, res) => {
+        let token = req.get('token')
+        dbserver.getUserInfo(token, res)
+    })
 }

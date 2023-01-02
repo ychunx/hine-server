@@ -2,6 +2,7 @@
 const dbserver = require('../dao/dbserver')
 const jsrsasign = require('jsrsasign')
 const bcrypt = require('bcryptjs')
+const CryptoJS = require('crypto-js')
 
 module.exports = (router) => {
     // 注册
@@ -12,8 +13,10 @@ module.exports = (router) => {
         let privateKey = jsrsasign.KEYUTIL.getPEM(rsaKeypair.prvKeyObj, 'PKCS8PRV');
 
         let data = req.body
-        data.publicKey = publicKey
-        data.privateKey = privateKey
+        // 存取用户密码加密的密钥对
+        data.publicKey = CryptoJS.AES.encrypt(publicKey, data.psw).toString()
+        data.privateKey = CryptoJS.AES.encrypt(privateKey, data.psw).toString()
+        // 存取密码的哈希值
         data.psw = bcrypt.hashSync(data.psw, 10)
 
         dbserver.buildUser(data, res)
