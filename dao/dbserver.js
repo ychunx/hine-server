@@ -3,6 +3,7 @@ const dbmodel = require('../model/dbmodel')
 const User = dbmodel.model('User')
 
 // 新建用户
+const emailserver = require('../dao/emailserver')
 exports.buildUser = (data, res) => {
     data.registerTime = new Date()
     let user = new User(data)
@@ -10,6 +11,7 @@ exports.buildUser = (data, res) => {
         if (err) {
             res.cc(err)
         } else {
+            emailserver.emailSignUp(data.name, data.email)
             res.cc('注册成功', 0)
         }
     })

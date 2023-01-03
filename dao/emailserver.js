@@ -9,19 +9,19 @@ const transporter = nodemailer.createTransport({
     }
 })
 
-exports.emailSignUp = (address, res) => {
+exports.emailSignUp = (name, address) => {
     let options = {
         from: 'ychunx@qq.com',
         to: address,
-        subject: '感谢您注册使用Hine！',
-        html: '<p>欢迎！</p><br><a href="#">点击验证激活</a>'
+        subject: `[Hine]${name}，您好，感谢您注册使用Hine！`,
+        html: `<p>欢迎！</p><p>尊敬的${name}，您已经注册成为 Hine 的用户。</p><p>如果您有任何疑问和建议，可以联系官方客服 QQ：1582398700。</p>`
     }
 
     transporter.sendMail(options, (err, msg) => {
         if(err){
-            res.send('邮件发送失败！')
+            console.log('邮件发送失败！')
         }else{
-            res.send('邮件发送成功！')
+            console.log('邮件发送成功！')
         }
     })
 }
