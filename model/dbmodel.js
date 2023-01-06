@@ -5,15 +5,15 @@ const Schema = mongoose.Schema
 
 // 用户表
 const UserSchema = new Schema({
-    email: {type: String},                                  // 邮箱
+    email: {type: String, unique: true},                    // 邮箱
     psw: {type: String},                                    // 加密后的密码
-    privateKey: {type: String},                                // 加密后的私钥
-    publicKey: {type: String},                                 // 加密后的公钥
-    name: {type: String},                                   // 用户名
+    privateKey: {type: String},                             // 加密后的私钥
+    publicKey: {type: String},                              // 加密后的公钥
+    name: {type: String, unique: true},                     // 用户名
     sex: {type: String, default: 'asexual'},                // 性别
-    birth: {type: Date, default: new Date()},                                    // 生日
-    signature: {type: String, default: '这个人很懒'},                              // 个性签名
-    imgUrl: {type: String, default: 'user.png'},            // 头像链接
+    birth: {type: Date, default: new Date()},               // 生日
+    signature: {type: String, default: '他很懒，什么都没有留下~'},  // 个性签名
+    imgUrl: {type: String, default: 'http://localhost:3000/user.jpg'},            // 头像链接
     registerTime: {type: Date},                             // 注册时间
 })
 
@@ -23,7 +23,7 @@ const FriendSchema = new Schema({
     friendId: {type: Schema.Types.ObjectId, ref: 'User'},   // 好友id
     nickname: {type: String},                               // 好友备注
     time: {type: Date},                                     // 关系形成时间
-    state: {type: String},                                  // 好友状态，0好友，1非好友，2申请方
+    state: {type: String},                                  // 好友状态，0好友，1申请方，2非好友
 })
 
 // 一对一消息表
@@ -39,14 +39,14 @@ const MessageSchema = new Schema({
 // 群表
 const GroupSchema = new Schema({
     userId: {type: Schema.Types.ObjectId, ref: 'User'},     // 群主id
-    name: {type: String},                                   // 群名称
+    name: {type: String, unique: true},                     // 群名称
     imgUrl: {type: String, default: 'group.png'},           // 群头像链接
     notice: {type: String},                                 // 群公告
     time: {type: Date},                                     // 建立时间
 })
 
 // 群成员表
-const GroupUserSchema = new Schema({
+const GroupMemberSchema = new Schema({
     groupId: {type: Schema.Types.ObjectId, ref: 'Group'},   // 群id
     userId: {type: Schema.Types.ObjectId, ref: 'User'},     // 用户id
     name: {type: String},                                   // 群内昵称
@@ -68,5 +68,5 @@ module.exports = db.model('User', UserSchema)
 module.exports = db.model('Friend', FriendSchema)
 module.exports = db.model('Message', MessageSchema)
 module.exports = db.model('Group', GroupSchema)
-module.exports = db.model('GroupUser', GroupUserSchema)
+module.exports = db.model('GroupMember', GroupMemberSchema)
 module.exports = db.model('GroupMsg', GroupMsgSchema)

@@ -1,6 +1,10 @@
 const dbmodel = require('../model/dbmodel')
 
 const User = dbmodel.model('User')
+const Friend = dbmodel.model('Friend')
+const Group = dbmodel.model('Group')
+const GroupMember = dbmodel.model('GroupMember')
+const GroupMsg = dbmodel.model('GroupMsg')
 
 // 新建用户
 const emailserver = require('../dao/emailserver')
@@ -73,6 +77,12 @@ exports.matchUser = (data, type, res) => {
     })
 }
 
+/*
+ *
+ *  以下的操作请求头都需要有token
+ *
+ */
+
 exports.getUserInfo = (token, res) => {
     let jwtRes = jwt.verify(token, config.jwtSecretKey)
     let _id = jwtRes._id
@@ -82,6 +92,63 @@ exports.getUserInfo = (token, res) => {
             res.cc(err)
         } else {
             res.cc(result[0], 0)
+        }
+    })
+}
+
+// 搜索用户
+exports.searchUser = (key, res) => {
+    let whereStr = {$or:[{'name': {$regex:key}}, {'email': {$regex:key}}]}
+    let out = { 'name': 1, 'email': 1, 'imgUrl': 1 }
+    User.find(whereStr, out, (err, result) => {
+        if (err) {
+            res.cc(err)
+        } else {
+            res.cc(result, 0)
+        }
+    })
+}
+
+// 查询好友关系
+exports.relationShip = (data, res) => {
+    data.state = 0
+    Friend.countDocuments(data, (err, result) => {
+        if (err) {
+            res.cc(err)
+        } else {
+            if (result == 0) {
+                res.cc('双方非好友', 2)
+            } else {
+                res.cc('双方是好友', 0)
+            }
+        }
+    })
+}
+
+// 搜索群
+exports.searchGroup = (key, res) => {
+    let whereStr = {'name': {$regex:key}}
+    let out = { 'name': 1, 'imgUrl': 1 }
+    Group.find(whereStr, out, (err, result) => {
+        if (err) {
+            res.cc(err)
+        } else {
+            res.cc(result, 0)
+        }
+    })
+}
+
+// 用户是否为群成员
+exports.isInGroup = (data, res) => {
+    Friend.countDocuments(data, (err, result) => {
+        if (err) {
+            res.cc(err)
+        } else {
+            if (result == 0) {
+                res.cc('非群内成员', 2)
+            } else {
+                res.cc('用户在群内', 0)
+            }
         }
     })
 }

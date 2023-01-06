@@ -2,7 +2,7 @@
 const dbserver = require('../dao/dbserver')
 
 module.exports = (router) => {
-    router.post('/signin', (req, res) => {
+    router.post('/signin/login', (req, res) => {
         // 判断传过来的是用户名还是邮箱地址
         let regEmail = /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+(\.[a-zA-Z0-9_-])+/
         let isEmail = regEmail.test(req.body.acct)

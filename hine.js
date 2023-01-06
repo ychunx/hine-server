@@ -5,6 +5,8 @@ const port = 3000
 const bodyParser = require('body-parser')
 app.use(bodyParser.json())
 
+app.use(express.static('public'))
+
 // 响应数据中间件
 app.use((req, res, next) => {
     // status = 0 为成功，status = 1 为失败
