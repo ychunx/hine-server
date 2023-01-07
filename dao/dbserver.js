@@ -2,6 +2,7 @@ const dbmodel = require('../model/dbmodel')
 
 const User = dbmodel.model('User')
 const Friend = dbmodel.model('Friend')
+const Message = dbmodel.model('Message')
 const Group = dbmodel.model('Group')
 const GroupMember = dbmodel.model('GroupMember')
 const GroupMsg = dbmodel.model('GroupMsg')
@@ -15,7 +16,7 @@ exports.buildUser = (data, res) => {
         if (err) {
             res.cc(err)
         } else {
-            emailserver.emailSignUp(data.name, data.email)
+            //emailserver.emailSignUp(data.name, data.email)
             res.cc('注册成功', 0)
         }
     })
@@ -92,11 +93,11 @@ exports.getUserInfo = (token, res) => {
     }
     let _id = jwtRes._id
     let out = { 'name': 1, 'imgUrl': 1 }
-    User.find({_id}, out, (err, result) => {
+    User.findOne({_id}, out, (err, result) => {
         if (err) {
             res.cc(err)
         } else {
-            res.cc(result[0], 0)
+            res.cc(result, 0)
         }
     })
 }
@@ -116,7 +117,7 @@ exports.searchUser = (key, res) => {
 
 // 查询好友关系
 exports.relationShip = (data, res) => {
-    data.state = 0
+    data.state = '0'
     Friend.countDocuments(data, (err, result) => {
         if (err) {
             res.cc(err)
@@ -154,6 +155,56 @@ exports.isInGroup = (data, res) => {
             } else {
                 res.cc('用户在群内', 0)
             }
+        }
+    })
+}
+
+// 新建用户关系
+exports.buildRelation = (data, res) => {
+    data.time = new Date()
+
+    let friend = new Friend(data)
+
+    friend.save((err, result) => {
+        if (err) {
+            console.log('建立关系错误', err)
+        }
+    })
+}
+
+// 好友申请
+exports.friendApply = (data, res) => {
+    let userId = data.userId
+    let friendId = data.friendId
+
+    // 直接查询有没有任意种关系，无需查询两遍，因为建立关系时是双向的
+    let whereStr = { userId, friendId }
+    Friend.countDocuments(whereStr, (err, result) => {
+        if (err) {
+            res.cc(err)
+        } else {
+            if (result == 0) {
+                this.buildRelation({userId, friendId, state: "1"})
+                this.buildRelation({userId: friendId, friendId: userId, state: "2"})
+            }
+            data.types = "0"
+            this.insertMsg(data, res)
+        }
+    })
+}
+
+// 插入信息
+exports.insertMsg = (data, res) => {
+    data.time = new Date()
+    data.state = '1'
+
+    let msg = new Message(data)
+
+    msg.save((err, result) => {
+        if (err) {
+            res.cc(err)
+        } else {
+            res.cc('发送成功', 0)
         }
     })
 }

@@ -1,5 +1,5 @@
 // 搜索页接口
-const dbserver = require('../dao/dbserver')
+const dbserver = require('../../dao/dbserver')
 
 module.exports = (router) => {
     // 搜索用户

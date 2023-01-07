@@ -1,5 +1,5 @@
 // 注册页接口
-const dbserver = require('../dao/dbserver')
+const dbserver = require('../../dao/dbserver')
 const jsrsasign = require('jsrsasign')
 const bcrypt = require('bcryptjs')
 const CryptoJS = require('crypto-js')

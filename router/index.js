@@ -24,8 +24,9 @@ router.all('*', (req, res, next) => {
     }
 })
 
-require('./signUp')(router)
-require('./signIn')(router)
-require('./search')(router)
+require('./modules/signUp')(router)
+require('./modules/signIn')(router)
+require('./modules/search')(router)
+require('./modules/friendApply')(router)
 
 module.exports = router

@@ -1,5 +1,5 @@
 // 登录页接口
-const dbserver = require('../dao/dbserver')
+const dbserver = require('../../dao/dbserver')
 
 module.exports = (router) => {
     router.post('/signin/login', (req, res) => {
