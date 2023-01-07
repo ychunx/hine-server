@@ -84,7 +84,12 @@ exports.matchUser = (data, type, res) => {
  */
 
 exports.getUserInfo = (token, res) => {
-    let jwtRes = jwt.verify(token, config.jwtSecretKey)
+    let jwtRes = ''
+    try {
+        jwtRes = jwt.verify(token, config.jwtSecretKey)
+    } catch (error) {
+        res.cc('token已失效', 2)
+    }
     let _id = jwtRes._id
     let out = { 'name': 1, 'imgUrl': 1 }
     User.find({_id}, out, (err, result) => {
