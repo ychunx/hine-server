@@ -85,21 +85,20 @@ exports.matchUser = (data, type, res) => {
  */
 
 exports.getUserInfo = (token, res) => {
-    let jwtRes = ''
     try {
-        jwtRes = jwt.verify(token, config.jwtSecretKey)
+        let jwtRes = jwt.verify(token, config.jwtSecretKey)
+        let _id = jwtRes._id
+        let out = { 'name': 1, 'imgUrl': 1 }
+        User.findOne({_id}, out, (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                res.cc(result, 0)
+            }
+        })
     } catch (error) {
         res.cc('token已失效', 2)
     }
-    let _id = jwtRes._id
-    let out = { 'name': 1, 'imgUrl': 1 }
-    User.findOne({_id}, out, (err, result) => {
-        if (err) {
-            res.cc(err)
-        } else {
-            res.cc(result, 0)
-        }
-    })
 }
 
 // 搜索用户
@@ -117,16 +116,19 @@ exports.searchUser = (key, res) => {
 
 // 查询好友关系
 exports.relationShip = (data, res) => {
-    data.state = '0'
-    Friend.countDocuments(data, (err, result) => {
+    Friend.findOne(data, {'state': 1}, (err, result) => {
         if (err) {
             res.cc(err)
-        } else {
-            if (result == 0) {
-                res.cc('双方非好友', 2)
-            } else {
+        } else if(result) {
+            if (result.state == '0') {
                 res.cc('双方是好友', 0)
+            } else if (result.state == '1') {
+                res.cc('申请中', 2)
+            } else {
+                res.cc('双方非好友', 3)
             }
+        } else {
+            res.cc('双方非好友', 3)
         }
     })
 }
@@ -146,7 +148,7 @@ exports.searchGroup = (key, res) => {
 
 // 用户是否为群成员
 exports.isInGroup = (data, res) => {
-    Friend.countDocuments(data, (err, result) => {
+    GroupMember.countDocuments(data, (err, result) => {
         if (err) {
             res.cc(err)
         } else {
@@ -160,7 +162,7 @@ exports.isInGroup = (data, res) => {
 }
 
 // 新建用户关系
-exports.buildRelation = (data, res) => {
+exports.buildRelation = (data) => {
     data.time = new Date()
 
     let friend = new Friend(data)
@@ -183,11 +185,13 @@ exports.friendApply = (data, res) => {
         if (err) {
             res.cc(err)
         } else {
+            data.types = "0"
+
             if (result == 0) {
                 this.buildRelation({userId, friendId, state: "1"})
                 this.buildRelation({userId: friendId, friendId: userId, state: "2"})
             }
-            data.types = "0"
+
             this.insertMsg(data, res)
         }
     })
@@ -207,4 +211,118 @@ exports.insertMsg = (data, res) => {
             res.cc('发送成功', 0)
         }
     })
+}
+
+// 修改好友关系
+exports.updateFriendRelation = (data, state, res) => {
+    Friend.updateMany(data, {state}, (err, result) => {
+        if (err) {
+           res.cc(err)
+        } else {
+            res.cc('请求成功', 0)
+        }
+    })
+}
+
+// 同意好友申请
+exports.agreeApply = (data, res) => {
+    Friend.findOne(data, {state: 1}, (err, result) => {
+        if (err) {
+            res.cc(err)
+        } else {
+            if (result.state == '2') {
+                // 只有被申请方才能同意
+                let whereStr = {$or: [
+                    data,
+                    {'friendId': data.userId, 'userId': data.friendId}
+                ]}
+                this.updateFriendRelation(whereStr, '0', res)
+            } else {
+                res.cc('无权同意', 2)
+            }
+        }
+    })
+}
+
+// 删除好友关系
+exports.deleteFriendRelation = (data, res) => {
+    let whereStr = {$or: [
+        data,
+        {'friendId': data.userId, 'userId': friendId}
+    ]}
+    Friend.deleteMany(whereStr, (err, result) => {
+        if (err) {
+            res.cc(err)
+        } else {
+            res.cc('请求成功', 0)
+        }
+    })
+}
+
+// 删除聊天记录(单向)
+exports.deleteChatRecord = (data, res) => {
+    Message.deleteMany(data, (err, result) => {
+        if (err) {
+            console.log('删除聊天记录失败', err)
+        }
+    })
+}
+
+// 获取好友列表
+exports.getFriends = (token, res) => {
+    try {
+        let jwtRes = jwt.verify(token, config.jwtSecretKey)
+        let userId = jwtRes._id
+
+        Friend.find({userId, state: '0'}, {friendId: 1, nickname: 1}, async (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                let friendsInfo = []
+                let info = {}
+                for (let i = 0; i < result.length; i++) {
+                    info = await User.findOne({_id: result[i].friendId},{name: 1, imgUrl: 1})
+                    friendsInfo.push(info)
+                }
+                res.cc(friendsInfo, 0)
+            }
+        })
+    } catch (error) {
+        res.cc('token已失效', 2)
+    }
+}
+
+// 获取好友申请列表
+exports.getFriendApplys = (token, res) => {
+    try {
+        let jwtRes = jwt.verify(token, config.jwtSecretKey)
+        let jwtUserId = jwtRes._id
+
+        Friend.find({userId: jwtUserId, state: '2'}, {friendId: 1}, async (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                let friendsInfo = []
+                let info = {}
+                let msgs = []
+                let msg = []
+
+                for (let i = 0; i < result.length; i++) {
+                    info = await User.findOne({_id: result[i].friendId},{name: 1, imgUrl: 1})
+                    friendsInfo.push(info)
+
+                    msg = await Message.find({userId: result[i].friendId, friendId: jwtUserId}, {content: 1, time: 1})
+                    msgs.push(msg)
+                }
+
+                let arr = friendsInfo.map((item, index) => {
+                    return {name: item.name, imgUrl: item.imgUrl, friendId: item._id, msgs: msgs[index]}
+                })
+
+                res.cc(arr, 0)
+            }
+        })
+    } catch (error) {
+        res.cc('token已失效', 2)
+    }
 }

@@ -40,7 +40,7 @@ const MessageSchema = new Schema({
 const GroupSchema = new Schema({
     userId: {type: Schema.Types.ObjectId, ref: 'User'},     // 群主id
     name: {type: String, unique: true},                     // 群名称
-    imgUrl: {type: String, default: 'group.png'},           // 群头像链接
+    imgUrl: {type: String, default: 'http://localhost:3000/user.jpg'},           // 群头像链接
     notice: {type: String},                                 // 群公告
     time: {type: Date},                                     // 建立时间
 })
@@ -52,7 +52,7 @@ const GroupMemberSchema = new Schema({
     name: {type: String},                                   // 群内昵称
     tip: {type: Number, default: 0},                        // 未读消息数
     time: {type: Date},                                     // 加入时间
-    state: {type: Number},                                  // 状态，0正常，1屏蔽
+    state: {type: Number},                                  // 状态，0正常，1免打扰
 })
 
 // 群消息表
