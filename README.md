@@ -482,3 +482,79 @@ Hine 聊天软件服务器
 }
 ```
 
+
+
+#### 聊天
+
+1. 获取所有好友发送的消息
+
+> 地址：/chat/getallfriendmsgs
+>
+> 请求方式： GET
+
+参数：无
+
+返回值：
+
+| 字段   | 类型  | 说明               |
+| ------ | ----- | ------------------ |
+| status | int   | 状态码             |
+| msg    | Array | 所有好友发送的消息 |
+
+示例：
+
+```json
+{
+    "status": 0,
+    "msg": [
+    	{
+            userId: 'asfasfa',
+            friendMsgs: [
+                {
+                    content: '你好',
+                    types: '0',
+                    time: '',
+                    state: 1
+                }
+            ]
+        }
+    ]
+}
+```
+
+2. 获取所有已发送的消息
+
+> 地址：/chat/getallmymsgs
+>
+> 请求方式： GET
+
+参数：无
+
+返回值：
+
+| 字段   | 类型  | 说明             |
+| ------ | ----- | ---------------- |
+| status | int   | 状态码           |
+| msg    | Array | 所有已发送的消息 |
+
+示例：
+
+```json
+{
+    "status": 0,
+    "msg": [
+    	{
+            friendId: 'asfasfa',
+            myMsgs: [
+                {
+                    content: '你好',
+                    types: '0',
+                    time: '',
+                    state: 1
+                }
+            ]
+        }
+    ]
+}
+```
+

@@ -248,7 +248,7 @@ exports.agreeApply = (data, res) => {
 exports.deleteFriendRelation = (data, res) => {
     let whereStr = {$or: [
         data,
-        {'friendId': data.userId, 'userId': friendId}
+        {'friendId': data.userId, 'userId': data.friendId}
     ]}
     Friend.deleteMany(whereStr, (err, result) => {
         if (err) {
@@ -319,6 +319,80 @@ exports.getFriendApplys = (token, res) => {
                     return {name: item.name, imgUrl: item.imgUrl, friendId: item._id, msgs: msgs[index]}
                 })
 
+                res.cc(arr, 0)
+            }
+        })
+    } catch (error) {
+        res.cc('token已失效', 2)
+    }
+}
+
+// 获取所有好友发送的消息
+exports.getAllFriendMsgs = (token, res) => {
+    try {
+        let jwtRes = jwt.verify(token, config.jwtSecretKey)
+        let id = jwtRes._id
+        let out = {userId: 1, content: 1, time: 1, types: 1, state: 1}
+        Message.find({friendId: id}, out, (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                // 将所有消息整理成一个对象，对象包含一个用户的id和包含他发送的所有消息的数组
+                let arr = result.reduce((prev, item) => {
+                    // 在上一个结果数组中寻找和当前id相同的对象
+                    let user = prev.find((prevItem) => {
+                        // 直接相比两个相同id得不到true的结果
+                        return String(prevItem.userId) == String(item.userId)
+                    })
+                    if (user) {
+                        // 如果存在则直接将当前项（一个消息）push入该用户的消息数组
+                        user.friendMsgs.push(item)
+                    } else {
+                        // 如果不存在则直接添加进去一个新的用户对象，并传给下一次循环
+                        prev.push({
+                            userId: item.userId,
+                            friendMsgs: [item]
+                        })
+                    }
+                    return prev
+                }, [])
+                res.cc(arr, 0)
+            }
+        })
+    } catch (error) {
+        res.cc('token已失效', 2)
+    }
+}
+
+// 获取所有已发送的消息
+exports.getAllMyMsgs = (token, res) => {
+    try {
+        let jwtRes = jwt.verify(token, config.jwtSecretKey)
+        let userId = jwtRes._id
+        let out = {friendId: 1, content: 1, time: 1, types: 1, state: 1}
+        Message.find({userId}, out, (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                // 将所有消息整理成一个对象，对象包含一个用户的id和包含他发送的所有消息的数组
+                let arr = result.reduce((prev, item) => {
+                    // 在上一个结果数组中寻找和当前id相同的对象
+                    let user = prev.find((prevItem) => {
+                        // 直接相比两个相同id得不到true的结果
+                        return String(prevItem.friendId) == String(item.friendId)
+                    })
+                    if (user) {
+                        // 如果存在则直接将当前项（一个消息）push入该用户的消息数组
+                        user.myMsgs.push(item)
+                    } else {
+                        // 如果不存在则直接添加进去一个新的用户对象，并传给下一次循环
+                        prev.push({
+                            friendId: item.friendId,
+                            myMsgs: [item]
+                        })
+                    }
+                    return prev
+                }, [])
                 res.cc(arr, 0)
             }
         })

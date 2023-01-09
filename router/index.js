@@ -28,5 +28,6 @@ require('./modules/signUp')(router)
 require('./modules/signIn')(router)
 require('./modules/search')(router)
 require('./modules/friend')(router)
+require('./modules/chat')(router)
 
 module.exports = router
