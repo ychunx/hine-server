@@ -16,4 +16,9 @@ module.exports = (router) => {
     router.post('/chat/readfriendmsgs', (req, res) => {
         dbserver.readFriendMsgs(req.body, res)
     })
+
+    // 发送消息
+    router.post('/chat/sendmsg', (req, res) => {
+        dbserver.insertMsg(req.body, res)
+    })
 }
