@@ -356,6 +356,19 @@ exports.getAllFriendMsgs = (token, res) => {
                     }
                     return prev
                 }, [])
+
+                // 去除非好友状态的消息(不包括单向好友)
+                arr.forEach((item, index) => {
+                    Friend.countDocuments({userId: id, friendId: item.userId, state: '0'}, (err, result) => {
+                        if (err) {
+                            console.log('查询错误')
+                        } else {
+                            if (result == 0) {
+                                arr.splice(index, 1)
+                            }
+                        }
+                    })
+                })
                 res.cc(arr, 0)
             }
         })
@@ -399,4 +412,20 @@ exports.getAllMyMsgs = (token, res) => {
     } catch (error) {
         res.cc('token已失效', 2)
     }
+}
+
+// 已读单个好友的所有消息
+exports.readFriendMsgs = (data, res) => {
+    let whereStr = {
+        userId: data.friendId,
+        friendId: data.userId,
+        state: '1'
+    }
+    Message.updateMany(whereStr, {state: '0'}, (err, result) => {
+        if (err) {
+            res.cc(err)
+        } else {
+            res.cc('请求成功',0)
+        }
+    })
 }

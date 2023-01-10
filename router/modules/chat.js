@@ -11,4 +11,9 @@ module.exports = (router) => {
     router.get('/chat/getallmymsgs', (req, res) => {
         dbserver.getAllMyMsgs(req.get('token'), res)
     })
+
+    // 已读单个好友的所有消息
+    router.post('/chat/readfriendmsgs', (req, res) => {
+        dbserver.readFriendMsgs(req.body, res)
+    })
 }
