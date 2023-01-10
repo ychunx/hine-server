@@ -358,18 +358,19 @@ exports.getAllFriendMsgs = (token, res) => {
                 }, [])
 
                 // 去除非好友状态的消息(不包括单向好友)
-                arr.forEach((item, index) => {
+                let newArr = []
+                arr.forEach((item) => {
                     Friend.countDocuments({userId: id, friendId: item.userId, state: '0'}, (err, result) => {
                         if (err) {
                             console.log('查询错误')
                         } else {
-                            if (result == 0) {
-                                arr.splice(index, 1)
+                            if (result != 0) {
+                                newArr.push(item)
                             }
                         }
                     })
                 })
-                res.cc(arr, 0)
+                res.cc(newArr, 0)
             }
         })
     } catch (error) {
