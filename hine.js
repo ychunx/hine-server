@@ -2,6 +2,13 @@ const express = require('express')
 const app = express()
 const port = 3000
 
+const socketServer = app.listen(3001)
+const io = require('socket.io').listen(socketServer)
+
+io.on('connection', (socket) => {
+    
+})
+
 const bodyParser = require('body-parser')
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: false }))
