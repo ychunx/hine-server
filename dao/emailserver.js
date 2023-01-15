@@ -17,7 +17,7 @@ exports.emailSignUp = (name, address) => {
         html: `<p>欢迎！</p><p>尊敬的${name}，您已经注册成为 Hine 的用户。</p><p>如果您有任何疑问和建议，可以联系官方客服 QQ：1582398700。</p>`
     }
 
-    transporter.sendMail(options, (err, msg) => {
+    transporter.sendMail(options, (err) => {
         if(err){
             console.log('邮件发送失败！')
         }else{

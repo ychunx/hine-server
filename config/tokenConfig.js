@@ -1,4 +1,4 @@
 module.exports = {
-    jwtSecretKey: 'ychunx',
+    jwtSecretKey: 'ychunx-hine-server',
     expiresIn: '24h'
 }

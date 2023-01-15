@@ -3,8 +3,33 @@ const dbserver = require('../../dao/dbserver')
 const jsrsasign = require('jsrsasign')
 const bcrypt = require('bcryptjs')
 const CryptoJS = require('crypto-js')
+const emailserver = require('../../dao/emailserver')
 
 module.exports = (router) => {
+    // 查询用户名是否已被占用，返回数量
+    router.get('/signup/nameinuse/:name', (req, res) => {
+        let callback = (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                res.cc(result, 200)
+            }
+        }
+        dbserver.countUserName(req.params, callback)
+    })
+
+    // 查询邮箱是否已被占用，返回数量
+    router.get('/signup/emailinuse/:email', (req, res) => {
+        let callback = (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                res.cc(result, 200)
+            }
+        }
+        dbserver.countUserEmail(req.params, callback)
+    })
+
     // 注册
     router.post('/signup/adduser', (req, res) => {
         // 生成 RSA 密钥对
@@ -14,21 +39,20 @@ module.exports = (router) => {
 
         let data = req.body
         // 存取用户密码加密的密钥对
-        data.publicKey = CryptoJS.AES.encrypt(publicKey, data.psw).toString()
-        data.privateKey = CryptoJS.AES.encrypt(privateKey, data.psw).toString()
+        data.publicKey = CryptoJS.AES.encrypt(publicKey, data.pwd).toString()
+        data.privateKey = CryptoJS.AES.encrypt(privateKey, data.pwd).toString()
         // 存取密码的哈希值
-        data.psw = bcrypt.hashSync(data.psw, 10)
+        data.pwd = bcrypt.hashSync(data.pwd, 10)
 
-        dbserver.buildUser(data, res)
-    })
+        let callback = (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                //emailserver.emailSignUp(data.name, data.email)
+                res.cc('注册成功', 200)
+            }
+        }
 
-    // 查询用户名是否已被占用
-    router.get('/signup/nameinuse/:name', (req, res) => {
-        dbserver.countUserName(req.params, res)
-    })
-
-    // 查询邮箱是否已被占用
-    router.get('/signup/emailinuse/:email', (req, res) => {
-        dbserver.countUserEmail(req.params, res)
+        dbserver.buildUser(data, callback)
     })
 }

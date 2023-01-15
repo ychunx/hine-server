@@ -11,15 +11,16 @@ router.all('*', (req, res, next) => {
     res.setHeader('Content-Type', 'application/json;charset=utf-8')
 
     // 判断是否需要并验证 token
-    let noTokenRequire = req.path.indexOf('signup') != -1 || req.path.indexOf('signin') != -1
-    if (noTokenRequire) {
+    if (req.path.indexOf('signup') != -1 || req.path.indexOf('login') != -1) {
         next()
     } else {
         try {
-            jwt.verify(req.get('token'), config.jwtSecretKey)
+            // 尝试验证 token 并把 token 所存储的用户 id 添加到 req 身上供后续使用
+            let jwtRes = jwt.verify(req.get('token'), config.jwtSecretKey)
+            req.jwt_id = jwtRes._id
             next()
         } catch (error) {
-            res.cc(error)
+            res.cc(`token 已失效，${error}`)
         }
     }
 })

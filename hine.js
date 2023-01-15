@@ -2,33 +2,33 @@ const express = require('express')
 const app = express()
 const port = 3000
 
-const socketServer = app.listen(3001)
-const io = require('socket.io').listen(socketServer)
+// socket.io
+const server = app.listen(3001)
+const io = require('socket.io').listen(server)
+require('./dao/socketserver')(io)
 
-io.on('connection', (socket) => {
-    
-})
-
+// body-parser
 const bodyParser = require('body-parser')
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: false }))
 
+// express.static
 app.use(express.static('public'))
 
-// 响应数据中间件
+// 错误处理中间件
 app.use((req, res, next) => {
-    // status = 0 为成功，status = 1 为失败
-    // 默认将 status 的值设置为 1，方便处理失败的情况
-    res.cc = (err, status = 1) => {
+    // 默认将 status 的值设置为 500，方便处理失败的情况
+    res.cc = (err, status = 500) => {
         res.send({
             status,
-            // 状态描述，判断 err 是 错误对象 还是 字符串
+            // 状态描述，如果 err 是错误对象则传回错误信息
             msg: err instanceof Error ? err.message : err,
         })
     }
     next()
 })
 
+// 路由
 const router = require('./router')
 app.use('/api', router)
 
@@ -39,10 +39,10 @@ app.use((req, res, next) => {
     next(err)
 })
 
-// 出错处理
+// 兜底出错处理
 app.use((err, req, res, next) => {
     res.status(err.status || 500)
     res.send(err.message)
 })
 
-app.listen(port, () => console.log(`hine 服务器已在 ${port} 端口启动！`))
+app.listen(port, () => console.log(`Hine 服务器已在 ${port} 端口启动！`))
