@@ -31,7 +31,7 @@ const MessageSchema = new Schema({
     userId: {type: Schema.Types.ObjectId, ref: 'User'},                     // 发送方id
     friendId: {type: Schema.Types.ObjectId, ref: 'User'},                   // 接收方id
     content: {type: String},                                                // 消息内容
-    type: {type: String},                                                   // 消息类型，0文字，1图片...
+    types: {type: String},                                                   // 消息类型，0文字，1图片...
     time: {type: Date, default: new Date()},                                // 消息发送时间
     state: {type: Number, default: 1},                                      // 消息状态，0已读，1未读
 })
@@ -60,7 +60,7 @@ const GroupMessageSchema = new Schema({
     groupId: {type: Schema.Types.ObjectId, ref: 'Group'},                   // 群id
     userId: {type: Schema.Types.ObjectId, ref: 'User'},                     // 发送者id
     content: {type: String},                                                // 消息内容
-    type: {type: String},                                                   // 消息类型，0文字，1图片...
+    types: {type: String},                                                   // 消息类型，0文字，1图片...
     time: {type: Date, default: new Date()},                                // 消息发送时间
 })
 

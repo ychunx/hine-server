@@ -18,7 +18,7 @@ Hine 聊天软件服务器
 >
 > 3. 好友管理
 >
->    拒绝添加好友、删除好友、获取好友列表、获取好友申请列表
+>    拒绝添加好友、删除好友、获取好友列表、获取好友申请列表、获取好友资料
 >
 > 4. 聊天
 >
@@ -546,6 +546,7 @@ Hine 聊天软件服务器
             name: 'zs',
             nickname: 'xiaozhang',
             imgUrl: 'user.png',
+            unReadNum: 1
             allMsgs: [
                 {
                     content: '你好',

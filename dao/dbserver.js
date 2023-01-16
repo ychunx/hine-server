@@ -297,6 +297,18 @@ exports.getAllMsgs = (userId, callback) => {
                             }
                             // 判断是否遍历完成
                             if(index == arr.length - 1) {
+                                // 计算未读消息数
+                                newArr.forEach(item1 => {
+                                    let unReadNum = 0
+
+                                    item1.allMsgs.forEach(item2 => {
+                                        if (item2.state == 1 && item2.friendId == userId) {
+                                            unReadNum++
+                                        }
+                                    })
+                                    
+                                    item1.unReadNum = unReadNum
+                                })
                                 callback('', newArr)
                             }
                         }
