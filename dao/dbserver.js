@@ -86,84 +86,55 @@ exports.isInGroup = (whereStr, callback) => {
 
 // 新建用户关系
 exports.buildRelation = (data) => {
-    data.time = new Date()
-
     let friend = new Friend(data)
 
-    friend.save((err, result) => {
-        if (err) {
-            console.log('建立关系错误', err)
-        }
-    })
+    friend.save()
 }
 
 // 好友申请
-exports.friendApply = (data, res) => {
+exports.friendApply = (data) => {
     let userId = data.userId
     let friendId = data.friendId
 
     // 直接查询有没有任意种关系，无需查询两遍，因为建立关系时是双向的
-    let whereStr = { userId, friendId }
-    Friend.countDocuments(whereStr, (err, result) => {
-        if (err) {
-            res.cc(err)
-        } else {
-            data.types = "0"
-
-            if (result == 0) {
-                this.buildRelation({userId, friendId, state: "1"})
-                this.buildRelation({userId: friendId, friendId: userId, state: "2"})
-            }
-
-            this.insertMsg(data, res)
+    Friend.countDocuments({ userId, friendId }, (err, result) => {
+        if (result == 0) {
+            this.buildRelation({userId, friendId, state: "1"})
+            this.buildRelation({userId: friendId, friendId: userId, state: "2"})
         }
+
+        this.insertMsg(data)
     })
 }
 
 // 插入信息
-exports.insertMsg = (data, res) => {
-    data.time = new Date()
-    data.state = '1'
-
+exports.insertMsg = (data) => {
     let msg = new Message(data)
 
-    msg.save((err, result) => {
-        if (err) {
-            res.cc(err)
-        } else {
-            res.cc('发送成功', 0)
-        }
-    })
+    msg.save()
 }
 
 // 修改好友关系
-exports.updateFriendRelation = (data, state, res) => {
-    Friend.updateMany(data, {state}, (err, result) => {
-        if (err) {
-           res.cc(err)
-        } else {
-            res.cc('请求成功', 0)
-        }
+exports.updateFriendRelation = (whereStr, state) => {
+    Friend.updateMany(whereStr, {state}, (err, result) => {
+        console.log(err, result)
     })
 }
 
 // 同意好友申请
-exports.agreeApply = (data, res) => {
+exports.agreeApply = (data) => {
     Friend.findOne(data, {state: 1}, (err, result) => {
-        if (err) {
-            res.cc(err)
-        } else {
-            if (result.state && result.state == '2') {
-                // 只有被申请方才能同意
-                let whereStr = {$or: [
-                    data,
-                    {'friendId': data.userId, 'userId': data.friendId}
-                ]}
-                this.updateFriendRelation(whereStr, '0', res)
-            } else {
-                res.cc('无权同意', 2)
-            }
+        if (result.state && result.state == '2') {
+            // 只有被申请方才能同意
+            let whereStr = {$or: [
+                data,
+                {'friendId': data.userId, 'userId': data.friendId}
+            ]}
+            this.updateFriendRelation(whereStr, '0')
         }
+        // else {
+        //     res.cc('无权同意', 2)
+        // }
     })
 }
 
@@ -244,7 +215,7 @@ exports.getAllMsgs = (userId, callback) => {
         { friendId: userId }
     ]}
 
-    Message.find(whereStr1, (err, result) => {
+    Message.find(whereStr1, async (err, result) => {
         if (err) {
             callback(err)
         } else {
@@ -274,46 +245,43 @@ exports.getAllMsgs = (userId, callback) => {
                 return prev
             }, [])
 
+            // 进一步处理
             if (arr.length > 0) {
                 let newArr = []
-                let whereStr2 = {}
                 let out = { 'name': 1, 'imgUrl': 1, 'nickname': 1 }
 
-                arr.forEach((item, index) => {
-                    whereStr2 = {userId, friendId: item.friendId, state: '0'}
+                // 去除非好友的消息
+                let a = await Promise.all(arr.map(async (item) => {
+                    let whereStr2 = {userId, friendId: item.friendId, state: '0'}
 
-                    // 去除非好友状态的消息
-                    Friend.countDocuments(whereStr2, async (err, result) => {
-                        if (err) {
-                            callback(err)
-                        } else {
-                            if (result > 0) {
-                                // 附带好友信息
-                                let info = await User.findOne({_id: item.friendId}, out)
-                                item.name = info.name
-                                item.imgUrl = info.imgUrl
-                                item.nickname = info.nickname
-                                newArr.push(item)
-                            }
-                            // 判断是否遍历完成
-                            if(index == arr.length - 1) {
-                                // 计算未读消息数
-                                newArr.forEach(item1 => {
-                                    let unReadNum = 0
+                    let has = await Friend.countDocuments(whereStr2)
+                    if (has > 0) {
+                        // 顺便附带好友信息
+                        let info = await User.findOne({_id: item.friendId}, out)
+                        item.name = info.name
+                        item.imgUrl = info.imgUrl
+                        item.nickname = info.nickname
+                        newArr.push(item)
+                        return 'ok'
+                    } else {
+                        return 'ok'
+                    }
+                }))
 
-                                    item1.allMsgs.forEach(item2 => {
-                                        if (item2.state == 1 && item2.friendId == userId) {
-                                            unReadNum++
-                                        }
-                                    })
-                                    
-                                    item1.unReadNum = unReadNum
-                                })
-                                callback('', newArr)
-                            }
+                // 计算未读消息数
+                newArr.forEach(item1 => {
+                    let unReadNum = 0
+
+                    item1.allMsgs.forEach(item2 => {
+                        if (item2.state == 1 && item2.friendId == userId) {
+                            unReadNum++
                         }
                     })
+
+                    item1.unReadNum = unReadNum
                 })
+
+                callback('', newArr)
             } else {
                 callback('', arr)
             }

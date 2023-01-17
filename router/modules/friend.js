@@ -3,17 +3,17 @@ const dbserver = require('../../dao/dbserver')
 
 module.exports = (router) => {
     // 申请添加
-    router.post('/friend/apply', (req, res) => {
-        if (req.body.content == '') {
-            req.body.content = '请求添加好友'
-        }
-        dbserver.friendApply(req.body, res)
-    })
+    // router.post('/friend/apply', (req, res) => {
+    //     if (req.body.content == '') {
+    //         req.body.content = '请求添加好友'
+    //     }
+    //     dbserver.friendApply(req.body, res)
+    // })
 
     // 同意添加
-    router.post('/friend/agree', (req, res) => {
-        dbserver.agreeApply(req.body, res)
-    })
+    // router.post('/friend/agree', (req, res) => {
+    //     dbserver.agreeApply(req.body, res)
+    // })
 
     // 拒绝添加
     router.post('/friend/reject', (req, res) => {
