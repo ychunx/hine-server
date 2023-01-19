@@ -8,6 +8,12 @@ module.exports = (router) => {
             if (err) {
                 res.cc(err)
             } else {
+                // 去除自己
+                result.forEach((item, index) => {
+                    if (item._id == req.jwt_id) {
+                        result.splice(index, 1)
+                    }
+                })
                 res.cc(result, 200)
             }
         }
