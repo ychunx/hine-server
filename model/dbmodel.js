@@ -11,10 +11,10 @@ const UserSchema = new Schema({
     privateKey: {type: String},                                             // 加密后的私钥
     publicKey: {type: String},                                              // 加密后的公钥
     sex: {type: String, default: '你猜猜~'},                                // 性别
-    birth: {type: Date, default: new Date()},                               // 出生日期
+    birth: {type: Date},                                                    // 出生日期
     signature: {type: String, default: 'ta很懒，什么都没有留下~'},           // 个性签名
     imgUrl: {type: String, default: 'http://localhost:3000/user.png'},      // 头像链接
-    registerTime: {type: Date, default: new Date()},                        // 注册时间
+    registerTime: {type: Date},                                             // 注册时间
 })
 
 // 好友表
@@ -31,8 +31,8 @@ const MessageSchema = new Schema({
     userId: {type: Schema.Types.ObjectId, ref: 'User'},                     // 发送方id
     friendId: {type: Schema.Types.ObjectId, ref: 'User'},                   // 接收方id
     content: {type: String},                                                // 消息内容
-    types: {type: String},                                                   // 消息类型，0文字，1图片...
-    time: {type: Date, default: new Date()},                                // 消息发送时间
+    types: {type: String},                                                  // 消息类型，0文字，1图片...
+    time: {type: Date},                                                     // 消息发送时间
     state: {type: Number, default: 1},                                      // 消息状态，0已读，1未读
 })
 
@@ -42,7 +42,7 @@ const GroupSchema = new Schema({
     userId: {type: Schema.Types.ObjectId, ref: 'User'},                     // 群主id
     imgUrl: {type: String, default: 'http://localhost:3000/user.jpg'},      // 群头像链接
     notice: {type: String},                                                 // 群公告
-    time: {type: Date, default: new Date()},                                // 建立时间
+    time: {type: Date},                                                     // 建立时间
 })
 
 // 群成员表
@@ -51,7 +51,7 @@ const GroupMemberSchema = new Schema({
     userId: {type: Schema.Types.ObjectId, ref: 'User'},                     // 用户id
     name: {type: String},                                                   // 群内昵称
     tip: {type: Number, default: 0},                                        // 未读消息数
-    time: {type: Date, default: new Date()},                                // 加入时间
+    time: {type: Date},                                                     // 加入时间
     state: {type: Number, default: 0},                                      // 状态，0正常，1免打扰
 })
 
@@ -60,8 +60,8 @@ const GroupMessageSchema = new Schema({
     groupId: {type: Schema.Types.ObjectId, ref: 'Group'},                   // 群id
     userId: {type: Schema.Types.ObjectId, ref: 'User'},                     // 发送者id
     content: {type: String},                                                // 消息内容
-    types: {type: String},                                                   // 消息类型，0文字，1图片...
-    time: {type: Date, default: new Date()},                                // 消息发送时间
+    types: {type: String},                                                  // 消息类型，0文字，1图片...
+    time: {type: Date},                                                     // 消息发送时间
 })
 
 module.exports = db.model('User', UserSchema)

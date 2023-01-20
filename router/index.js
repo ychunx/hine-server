@@ -30,5 +30,6 @@ require('./modules/signIn')(router)
 require('./modules/search')(router)
 require('./modules/friend')(router)
 require('./modules/chat')(router)
+require('./modules/detail')(router)
 
 module.exports = router

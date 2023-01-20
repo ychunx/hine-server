@@ -43,6 +43,8 @@ module.exports = (router) => {
         data.privateKey = CryptoJS.AES.encrypt(privateKey, data.pwd).toString()
         // 存取密码的哈希值
         data.pwd = bcrypt.hashSync(data.pwd, 10)
+        data.birth = new Date()
+        data.registerTime = new Date()
 
         let callback = (err, result) => {
             if (err) {

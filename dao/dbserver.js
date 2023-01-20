@@ -103,6 +103,7 @@ exports.friendApply = (data) => {
             this.buildRelation({userId: friendId, friendId: userId, state: "2"})
         }
 
+        data.time = new Date()
         this.insertMsg(data)
     })
 }
@@ -116,7 +117,7 @@ exports.insertMsg = (data) => {
 
 // 修改好友关系
 exports.updateFriendRelation = (whereStr, state) => {
-    Friend.updateMany(whereStr, {state}, (err, result) => {
+    Friend.updateMany(whereStr, {state, time: new Date()}, (err, result) => {
         console.log(err, result)
     })
 }
@@ -131,6 +132,11 @@ exports.agreeApply = (data) => {
                 {'friendId': data.userId, 'userId': data.friendId}
             ]}
             this.updateFriendRelation(whereStr, '0')
+            let msg = {...data}
+            msg.content = '我们已经成为好友，可以开始聊天了！'
+            msg.types = '0'
+            msg.time = new Date()
+            this.insertMsg(msg)
         }
         // else {
         //     res.cc('无权同意', 2)
@@ -170,8 +176,9 @@ exports.getFriends = (userId, callback) => {
         } else {
             let friendsInfo = []
             let info = {}
+            let out = { 'pwd': 0, 'privateKey': 0, 'publicKey': 0 }
             for (let i = 0; i < result.length; i++) {
-                info = await User.findOne({_id: result[i].friendId},{name: 1, imgUrl: 1})
+                info = await User.findOne({_id: result[i].friendId}, out)
                 info.nickname = result[i].nickname
                 friendsInfo.push(info)
             }
@@ -298,6 +305,20 @@ exports.readFriendMsgs = (data, callback) => {
     }
 
     Message.updateMany(whereStr, {state: '0'}, (err, result) => {
+        callback(err, result)
+    })
+}
+
+// 修改用户表集合
+exports.updateUser = (whereStr, updateStr, callback) => {
+    User.updateOne(whereStr, updateStr, (err, result) => {
+        callback(err, result)
+    })
+}
+
+exports.getCipher = (whereStr, callback) => {
+    let out = {pwd: 1, privateKey: 1, publicKey: 1}
+    User.findOne(whereStr, out, (err, result) => {
         callback(err, result)
     })
 }
