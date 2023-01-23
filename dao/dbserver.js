@@ -178,7 +178,8 @@ exports.getFriends = (userId, callback) => {
             let info = {}
             let out = { 'pwd': 0, 'privateKey': 0, 'publicKey': 0 }
             for (let i = 0; i < result.length; i++) {
-                info = await User.findOne({_id: result[i].friendId}, out)
+                let res = await User.findOne({_id: result[i].friendId}, out)
+                info = {...res._doc}
                 info.nickname = result[i].nickname
                 friendsInfo.push(info)
             }
@@ -255,9 +256,10 @@ exports.getAllMsgs = (userId, callback) => {
             // 进一步处理
             if (arr.length > 0) {
                 let newArr = []
-                let out = { 'name': 1, 'imgUrl': 1, 'nickname': 1 }
+                let out = { 'name': 1, 'imgUrl': 1 }
 
                 // 去除非好友的消息
+                // 需要变量接收才不报错
                 let a = await Promise.all(arr.map(async (item) => {
                     let whereStr2 = {userId, friendId: item.friendId, state: '0'}
 
@@ -267,7 +269,9 @@ exports.getAllMsgs = (userId, callback) => {
                         let info = await User.findOne({_id: item.friendId}, out)
                         item.name = info.name
                         item.imgUrl = info.imgUrl
-                        item.nickname = info.nickname
+                        let nicknameItem = await Friend.findOne({userId, friendId: item.friendId}, {nickname: 1})
+                        item.nickname = nicknameItem.nickname
+
                         newArr.push(item)
                         return 'ok'
                     } else {
@@ -319,6 +323,12 @@ exports.updateUser = (whereStr, updateStr, callback) => {
 exports.getCipher = (whereStr, callback) => {
     let out = {pwd: 1, privateKey: 1, publicKey: 1}
     User.findOne(whereStr, out, (err, result) => {
+        callback(err, result)
+    })
+}
+
+exports.updateFriend = (whereStr, updateStr, callback) => {
+    Friend.updateOne(whereStr, updateStr, (err, result) => {
         callback(err, result)
     })
 }

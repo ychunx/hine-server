@@ -167,7 +167,7 @@ module.exports = (router) => {
     // 修改个性签名
     router.post('/detail/signature', (req, res) => {
         let _id = req.jwt_id
-        let signature = req.body.signature
+        let signature = req.body.newSignature
         let callback = (err, result) => {
             if (err) {
                 res.cc(err)
@@ -192,5 +192,24 @@ module.exports = (router) => {
         }
 
         dbserver.updateUser({_id}, {imgUrl}, callback)
+    })
+
+    // 修改好友备注
+    router.post('/detail/nickname', (req, res) => {
+        let {userId, friendId, newNickname} = req.body
+        let whereStr = {
+            userId,
+            friendId
+        }
+
+        let callback = (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                res.cc('修改成功', 200)
+            }
+        }
+
+        dbserver.updateFriend(whereStr, {nickname: newNickname}, callback)
     })
 }
