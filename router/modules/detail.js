@@ -180,9 +180,9 @@ module.exports = (router) => {
     })
 
     // 修改头像，没写完，需要上传头像至服务器后得到头像链接再调用接口
-    router.post('/detail/imgurl', (req, res) => {
+    router.post('/detail/portrait', (req, res) => {
         let _id = req.jwt_id
-        let imgUrl = req.body.newImgUrl
+        let imgUrl = req.body.newPortraitUrl
         let callback = (err, result) => {
             if (err) {
                 res.cc(err)
