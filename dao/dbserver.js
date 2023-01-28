@@ -217,11 +217,11 @@ exports.getFriendApplys = (userId, callback) => {
 }
 
 // 获取聊天记录
-exports.getAllMsgs = (userId, callback) => {
+exports.getAllMsgs = (userId, encrypted, callback) => {
     let whereStr1 = {$or: [
         { userId },
         { friendId: userId }
-    ]}
+    ], encrypted}
 
     Message.find(whereStr1, async (err, result) => {
         if (err) {
@@ -284,7 +284,7 @@ exports.getAllMsgs = (userId, callback) => {
                     let unReadNum = 0
 
                     item1.allMsgs.forEach(item2 => {
-                        if (item2.state == 1 && item2.friendId == userId) {
+                        if (!item2.read && item2.friendId == userId) {
                             unReadNum++
                         }
                     })
@@ -301,14 +301,15 @@ exports.getAllMsgs = (userId, callback) => {
 }
 
 // 已读单个好友发送的所有消息
-exports.readFriendMsgs = (data, callback) => {
+exports.readFriendMsgs = (data, encrypted, callback) => {
     let whereStr = {
         userId: data.friendId,
         friendId: data.userId,
-        state: '1'
+        read: false,
+        encrypted
     }
 
-    Message.updateMany(whereStr, {state: '0'}, (err, result) => {
+    Message.updateMany(whereStr, {read: true}, (err, result) => {
         callback(err, result)
     })
 }
@@ -327,6 +328,7 @@ exports.getCipher = (whereStr, callback) => {
     })
 }
 
+// 修改好友表集合
 exports.updateFriend = (whereStr, updateStr, callback) => {
     Friend.updateOne(whereStr, updateStr, (err, result) => {
         callback(err, result)

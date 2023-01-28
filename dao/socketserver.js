@@ -28,7 +28,11 @@ module.exports = (io) => {
             let toId = socketList[data.friendId]
             dbserver.insertMsg(data)
             if (toId) {
-                socket.to(toId).emit('receiveMsg', data)
+                if (data.encrypted) {
+                    socket.to(toId).emit('receiveEncryptedMsg', data)
+                } else {
+                    socket.to(toId).emit('receiveMsg', data)
+                }
             }
         })
 

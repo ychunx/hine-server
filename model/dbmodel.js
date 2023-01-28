@@ -33,7 +33,8 @@ const MessageSchema = new Schema({
     content: {type: String},                                                // 消息内容
     types: {type: String},                                                  // 消息类型，0文字，1图片...
     time: {type: Date},                                                     // 消息发送时间
-    state: {type: Number, default: 1},                                      // 消息状态，0已读，1未读
+    read: {type: Boolean, default: false},                                  // 是否已读
+    encrypted: {type: Boolean, default: false}                              // 是否为加密消息
 })
 
 // 群表
@@ -50,7 +51,7 @@ const GroupMemberSchema = new Schema({
     groupId: {type: Schema.Types.ObjectId, ref: 'Group'},                   // 群id
     userId: {type: Schema.Types.ObjectId, ref: 'User'},                     // 用户id
     name: {type: String},                                                   // 群内昵称
-    tip: {type: Number, default: 0},                                        // 未读消息数
+    unReadNum: {type: Number, default: 0},                                  // 未读消息数
     time: {type: Date},                                                     // 加入时间
     state: {type: Number, default: 0},                                      // 状态，0正常，1免打扰
 })

@@ -457,7 +457,7 @@ Hine 聊天软件服务器
 
 #### 聊天
 
-1. 获取所有聊天记录
+1. 获取所有非加密聊天记录
 
 > 地址：/chat/getallmsgs
 >
@@ -489,7 +489,8 @@ Hine 聊天软件服务器
                     content: '你好',
                     types: '0',
                     time: '',
-                    state: 1,
+                    read: false,
+                    encrypted: false,
                     userId: ''	// 发送方id
                     friendId: ''	// 接收方id
                 }
@@ -499,7 +500,7 @@ Hine 聊天软件服务器
 }
 ```
 
-2. 已读单个好友的所有消息
+2. 已读单个好友的所有非加密消息
 
 > 地址：/chat/readfriendmsgs
 >
@@ -527,6 +528,80 @@ Hine 聊天软件服务器
     "msg": '请求成功'
 }
 ```
+
+3. 获取所有加密聊天记录
+
+> 地址：/chat/getallencryptedmsgs
+>
+> 请求方式： GET
+
+参数：无
+
+返回值：
+
+| 字段   | 类型  | 说明                           |
+| ------ | ----- | ------------------------------ |
+| status | int   | 状态码                         |
+| msg    | Array | 所有加密聊天记录和对应好友信息 |
+
+示例：
+
+```json
+{
+    "status": 200,
+    "msg": [
+    	{
+            friendId: 'asfasdasfa',
+            name: 'zs',
+            nickname: 'xiaozhang',
+            imgUrl: 'user.png',
+            unReadNum: 1
+            allMsgs: [
+                {
+                    content: '你好',
+                    types: '0',
+                    time: '',
+                    read: true,
+                    encrypted: true,
+                    userId: ''	// 发送方id
+                    friendId: ''	// 接收方id
+                }
+            ]
+        }
+    ]
+}
+```
+
+4. 已读单个好友的所有加密消息
+
+> 地址：/chat/readfriendencryptedmsgs
+>
+> 请求方式： POST
+
+参数：
+
+| 字段     | 类型   | 说明       | 必需 |
+| -------- | ------ | ---------- | ---- |
+| userId   | String | 用户id     | 是   |
+| friendId | String | 对象好友id | 是   |
+
+返回值：
+
+| 字段   | 类型   | 说明     |
+| ------ | ------ | -------- |
+| status | int    | 状态码   |
+| msg    | String | 描述信息 |
+
+示例：
+
+```json
+{
+    "status": 200,
+    "msg": '请求成功'
+}
+```
+
+
 
 #### 资料
 
