@@ -28,6 +28,8 @@ module.exports = (router) => {
 
     // 已读单个好友的所有非加密消息
     router.post('/chat/readfriendmsgs', (req, res) => {
+        let userId = req.jwt_id
+        let friendId = req.body.friendId
         let callback = (err, result) => {
             if (err) {
                 res.cc(err)
@@ -35,11 +37,13 @@ module.exports = (router) => {
                 res.cc('请求成功', 200)
             }
         }
-        dbserver.readFriendMsgs(req.body, false, callback)
+        dbserver.readFriendMsgs({userId, friendId}, false, callback)
     })
 
     // 已读单个好友的所有加密消息
     router.post('/chat/readfriendencryptedmsgs', (req, res) => {
+        let userId = req.jwt_id
+        let friendId = req.body.friendId
         let callback = (err, result) => {
             if (err) {
                 res.cc(err)
@@ -47,6 +51,36 @@ module.exports = (router) => {
                 res.cc('请求成功', 200)
             }
         }
-        dbserver.readFriendMsgs(req.body, true, callback)
+        dbserver.readFriendMsgs({userId, friendId}, true, callback)
+    })
+
+    // 删除非加密聊天记录
+    router.post('/chat/delete', (req, res) => {
+        let userId = req.jwt_id
+        let friendId = req.body.friendId
+        let callback = (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                res.cc('删除成功', 200)
+            }
+        }
+
+        dbserver.deleteChatRecord({userId, friendId}, false, callback)
+    })
+
+    // 删除加密聊天记录
+    router.post('/chat/deleteencrypted', (req, res) => {
+        let userId = req.jwt_id
+        let friendId = req.body.friendId
+        let callback = (err, result) => {
+            if (err) {
+                res.cc(err)
+            } else {
+                res.cc('删除成功', 200)
+            }
+        }
+
+        dbserver.deleteChatRecord({userId, friendId}, true, callback)
     })
 }

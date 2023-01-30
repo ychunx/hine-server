@@ -2,21 +2,10 @@
 const dbserver = require('../../dao/dbserver')
 
 module.exports = (router) => {
-    // 申请添加
-    // router.post('/friend/apply', (req, res) => {
-    //     if (req.body.content == '') {
-    //         req.body.content = '请求添加好友'
-    //     }
-    //     dbserver.friendApply(req.body, res)
-    // })
-
-    // 同意添加
-    // router.post('/friend/agree', (req, res) => {
-    //     dbserver.agreeApply(req.body, res)
-    // })
-
     // 拒绝添加
     router.post('/friend/reject', (req, res) => {
+        let userId = req.jwt_id
+        let friendId = req.body.friendId
         let callback = (err, result) => {
             if (err) {
                 res.cc(err)
@@ -24,12 +13,13 @@ module.exports = (router) => {
                 res.cc('拒绝成功', 200)
             }
         }
-        dbserver.deleteFriendRelation(req.body, callback)
+        dbserver.deleteFriendRelation({userId, friendId}, callback)
     })
 
     // 删除好友
     router.post('/friend/delete', (req, res) => {
-        let {userId, friendId} = req.body
+        let userId = req.jwt_id
+        let friendId = req.body.friendId
         let callback1 = (err, result) => {
             if (err) {
                 res.cc(err)
@@ -45,7 +35,7 @@ module.exports = (router) => {
             }
         }
         // 删除聊天记录
-        dbserver.deleteChatRecord({userId, friendId}, callback1)
+        dbserver.deleteAllChatRecord({userId, friendId}, callback1)
     })
 
     // 获取好友列表

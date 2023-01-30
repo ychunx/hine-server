@@ -156,12 +156,24 @@ exports.deleteFriendRelation = (data, callback) => {
     })
 }
 
-// 删除聊天记录
-exports.deleteChatRecord = (data, callback) => {
+// 删除所有聊天记录
+exports.deleteAllChatRecord = (data, callback) => {
     let whereStr = {$or: [
         data,
         {'friendId': data.userId, 'userId': data.friendId}
     ]}
+
+    Message.deleteMany(whereStr, (err, result) => {
+        callback(err, result)
+    })
+}
+
+// 删除聊天记录
+exports.deleteChatRecord = (data, encrypted, callback) => {
+    let whereStr = {$or: [
+        data,
+        {'friendId': data.userId, 'userId': data.friendId}
+    ], encrypted}
 
     Message.deleteMany(whereStr, (err, result) => {
         callback(err, result)
