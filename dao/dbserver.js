@@ -43,7 +43,7 @@ exports.matchUser = (whereStr, callback) => {
  */
 // 获取用户信息
 exports.getUserInfo = (_id, callback) => {
-    let out = { 'pwd': 0, 'privateKey': 0, 'publicKey': 0 }
+    let out = { 'pwd': 0, 'publicKey': 0 }
 
     User.findOne({_id}, out, (err, result) => {
         callback(err, result)
@@ -188,7 +188,7 @@ exports.getFriends = (userId, callback) => {
         } else {
             let friendsInfo = []
             let info = {}
-            let out = { 'pwd': 0, 'privateKey': 0, 'publicKey': 0 }
+            let out = { 'pwd': 0, 'privateKey': 0 }
             for (let i = 0; i < result.length; i++) {
                 let res = await User.findOne({_id: result[i].friendId}, out)
                 info = {...res._doc}

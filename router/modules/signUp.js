@@ -39,7 +39,8 @@ module.exports = (router) => {
 
         let data = req.body
         // 存取用户密码加密的密钥对
-        data.publicKey = CryptoJS.AES.encrypt(publicKey, data.pwd).toString()
+        //data.publicKey = CryptoJS.AES.encrypt(publicKey, data.pwd).toString()
+        data.publicKey = publicKey
         data.privateKey = CryptoJS.AES.encrypt(privateKey, data.pwd).toString()
         // 存取密码的哈希值
         data.pwd = bcrypt.hashSync(data.pwd, 10)
