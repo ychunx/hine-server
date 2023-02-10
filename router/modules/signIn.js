@@ -13,7 +13,7 @@ module.exports = (router) => {
             if (err) {
                 res.cc(err)
             } else {
-                if (result == '') {
+                if (!result || result == '') {
                     res.cc('账号或密码错误', 201)
                 } else {
                     let matchPwd = bcrypt.compareSync(pwd, result.pwd)
