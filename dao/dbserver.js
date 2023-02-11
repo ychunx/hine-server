@@ -43,7 +43,7 @@ exports.matchUser = (whereStr, callback) => {
  */
 // 获取用户信息
 exports.getUserInfo = (_id, callback) => {
-    let out = { 'pwd': 0, 'publicKey': 0 }
+    let out = { 'pwd': 0 }
 
     User.findOne({_id}, out, (err, result) => {
         callback(err, result)
