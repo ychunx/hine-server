@@ -83,4 +83,32 @@ module.exports = (router) => {
 
     dbserver.deleteChatRecord({ userId, friendId }, true, callback);
   });
+
+  // 获取所有群组聊天记录
+  router.get("/chat/getallgroupmsgs", (req, res) => {
+    let callback = (err, result) => {
+      if (err) {
+        res.cc(err);
+      } else {
+        res.cc(result, 200);
+      }
+    };
+    
+    dbserver.getAllGroupMsgs({userId: req.jwt_id}, callback);
+  });
+
+  // 已读群组消息和信息
+  router.post("/chat/readgroupmsgs", (req, res) => {
+    let userId = req.jwt_id;
+    let groupId = req.body.groupId;
+    let callback = (err, result) => {
+      if (err) {
+        res.cc(err);
+      } else {
+        res.cc("请求成功", 200);
+      }
+    };
+
+    dbserver.readGroupMsgs({ userId, groupId }, callback);
+  });
 };

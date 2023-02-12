@@ -653,6 +653,98 @@ Hine 聊天软件服务器
 }
 ```
 
+7. 已读群组所有消息
+
+> 地址：/chat/readgroupmsgs
+>
+> 请求方式： POST
+
+参数：
+
+| 字段    | 类型   | 说明       | 必需 |
+| ------- | ------ | ---------- | ---- |
+| groupId | String | 对象群组id | 是   |
+
+返回值：
+
+| 字段   | 类型   | 说明     |
+| ------ | ------ | -------- |
+| status | int    | 状态码   |
+| msg    | String | 描述信息 |
+
+示例：
+
+```json
+{
+    "status": 200,
+    "msg": '请求成功'
+}
+```
+
+8. 获取所有群组消息和群成员信息
+
+> 地址：/chat/getallgroupmsgs
+>
+> 请求方式： GET
+
+参数：无
+
+返回值：
+
+| 字段   | 类型   | 说明                     |
+| ------ | ------ | ------------------------ |
+| status | int    | 状态码                   |
+| msg    | String | 所有群组消息和群成员信息 |
+
+示例：
+
+```JSON
+{
+    "status": 200,
+    "msg": {
+        "allGroupMsgs": [
+            {
+                "groupId": "63e8f1a7437fb9398cc7ff7b",
+                "unReadNum": 1,
+                "joinTime": "2023-02-12T14:03:19.287Z",
+                "name": "1",
+                "userId": "63e734b3f354781166cafa05",
+                "imgUrl": "http://localhost:3000/user.png",
+                "time": "2023-02-12T14:03:19.287Z",
+                "allMsgs": [
+                    {
+                        "_id": "63e8f1a7437fb9398cc7ff7f",
+                        "groupId": "63e8f1a7437fb9398cc7ff7b",
+                        "userId": "63e734b3f354781166cafa05",
+                        "content": "创建群组",
+                        "types": "0",
+                        "time": "2023-02-12T14:03:19.297Z",
+                        "__v": 0
+                    }
+                ]
+            },
+        ],
+        "allInfos": [
+            {
+                "groupId": "63e8f1a7437fb9398cc7ff7b",
+                "memberInfos": [
+                    {
+                        "_id": "63e734b3f354781166cafa05",
+                        "name": "1",
+                        "imgUrl": "http://localhost:3000/user.png"
+                    },
+                    {
+                        "_id": "63e734b8f354781166cafa0b",
+                        "name": "2",
+                        "imgUrl": "http://localhost:3000/user.png"
+                    }
+                ]
+            },
+        ]
+    }
+}
+```
+
 #### 资料
 
 1. 修改用户名

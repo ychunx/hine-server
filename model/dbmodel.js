@@ -53,7 +53,6 @@ const GroupMemberSchema = new Schema({
   name: { type: String }, // 群内昵称
   unReadNum: { type: Number, default: 0 }, // 未读消息数
   time: { type: Date }, // 加入时间
-  state: { type: Number, default: 0 }, // 状态，0正常，1免打扰
 });
 
 // 群消息表

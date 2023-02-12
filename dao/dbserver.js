@@ -110,7 +110,7 @@ exports.friendApply = (data) => {
   });
 };
 
-// 插入信息
+// 插入消息
 exports.insertMsg = (data) => {
   let msg = new Message(data);
 
@@ -377,7 +377,7 @@ exports.countGroupName = (whereStr, callback) => {
 exports.buildGroup = (whereStr, callback) => {
   let group = new Group(whereStr);
   group.save((err, result) => {
-    callback(err, result)
+    callback(err, result);
   });
 };
 
@@ -387,4 +387,94 @@ exports.addGroupMember = (whereStr, callback) => {
   groupMember.save((err, result) => {
     callback(err, result);
   });
+};
+
+// 插入群组消息
+exports.insertGroupMsg = async (data) => {
+  data.time = new Date();
+
+  let groupMsg = new GroupMessage(data);
+  await groupMsg.save();
+  await GroupMember.updateMany(
+    { groupId: data.groupId },
+    { $inc: { unReadNum: 1 } }
+  );
+};
+
+// 已读群组所有消息
+exports.readGroupMsgs = (whereStr, callback) => {
+  GroupMember.updateOne(whereStr, { unReadNum: "0" }, (err, result) => {
+    callback(err, result);
+  });
+};
+
+// 获取所有群组消息和信息
+exports.getAllGroupMsgs = async (whereStr, callback) => {
+  try {
+    let groups = await GroupMember.find(whereStr, { userId: 0 });
+
+    let groupInfos = []
+    await Promise.all(
+      groups.map(async (item) => {
+        let info = await Group.findOne({ _id: item.groupId });
+        groupInfos.push(info)
+        return 'ok'
+      })
+    );
+
+    let groupMsgs = []
+    await Promise.all(
+      groups.map(async (item) => {
+        let msgs = await GroupMessage.find({ groupId: item.groupId });
+        groupMsgs.push(msgs)
+      })
+    );
+
+    let allGroupMsgs = []
+    groups.forEach(item => {
+      let msgs = {}
+      msgs.groupId = item.groupId
+      msgs.nickName = item.name
+      msgs.unReadNum = item.unReadNum
+      msgs.joinTime = item.time
+
+      groupInfos.forEach(info => {
+        if (String(item.groupId) == String(info._id)) {
+          msgs.name = info.name
+          msgs.userId = info.userId
+          msgs.imgUrl = info.imgUrl
+          msgs.notice = info.notice
+          msgs.time = info.time
+        }
+      })
+
+      groupMsgs.forEach(msg => {
+        if (String(item.groupId) == String(msg[0].groupId)) {
+          msgs.allMsgs = msg
+        }
+      })
+
+      allGroupMsgs.push(msgs)
+    })
+
+    // 查询每个群的群成员信息
+    let allInfos = []
+    await Promise.all(
+      groups.map(async (item) => {
+        let users = await GroupMember.find({groupId: item.groupId}, {userId: 1, name: 1})
+        let infos = []
+        await Promise.all(
+          users.map(async (user) => {
+            let info = await User.findOne({_id: user.userId}, {name: 1, imgUrl: 1})
+            infos.push(info)
+          })
+        )
+        allInfos.push({groupId: item.groupId, memberInfos: infos})
+      })
+    )
+
+    callback(null, {allGroupMsgs, allInfos})
+  } catch (error) {
+    callback(error);
+  }
 };

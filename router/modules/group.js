@@ -25,31 +25,37 @@ module.exports = (router) => {
       if (err) {
         res.cc(err);
       } else {
-        let flag = null
-        let whereStr = {}
-        friends.unshift(userId)
+        let flag = null;
+        let whereStr = {};
+        friends.unshift(userId);
 
-        friends.forEach(item => {
+        friends.forEach((item) => {
           whereStr = {
             groupId: result._id,
             userId: item,
-            time
-          }
+            time,
+          };
           dbserver.addGroupMember(whereStr, (err, result) => {
             if (err) {
-              flag = err
+              flag = err;
             }
           });
-        })
+        });
 
         if (flag) {
-          res.cc(flag)
+          res.cc(flag);
         } else {
-          res.cc('创建成功', 200)
+          dbserver.insertGroupMsg({
+            groupId: result._id,
+            userId,
+            content: "创建群组",
+            types: "0",
+          });
+          res.cc("创建成功", 200);
         }
       }
     };
 
-    dbserver.buildGroup({userId, name, imgUrl, time}, callback);
+    dbserver.buildGroup({ userId, name, imgUrl, time }, callback);
   });
 };
