@@ -59,18 +59,53 @@ module.exports = (io) => {
 
     // 发送群组消息
     socket.on("sendGroupMsg", (data) => {
-      dbserver.insertGroupMsg(data)
-      let groupId = data.groupId
-      dbserver.getGroupMembers({groupId}, (err, result) => {
+      dbserver.insertGroupMsg(data);
+      let groupId = data.groupId;
+      dbserver.getGroupMembers({ groupId }, (err, result) => {
         if (!err) {
-          result.forEach(item => {
-            let toId = socketList[item.userId]
+          result.forEach((item) => {
+            let toId = socketList[item.userId];
             if (toId && item.userId != data.userId) {
               socket.to(toId).emit("receiveGroupMsg", data);
             }
-          })
+          });
         }
-      })
+      });
+    });
+
+    // 申请加入群组
+    socket.on("groupApply", (data) => {
+      let { groupId, userId, content, types } = data;
+      let time = new Date();
+      if (content == "") {
+        content = "加入了群组";
+      }
+
+      dbserver.addGroupMember({
+        groupId,
+        userId,
+        time,
+      });
+
+      dbserver.insertGroupMsg({
+        groupId,
+        userId,
+        time,
+        content,
+        types,
+      });
+
+      dbserver.getGroupMembers({ groupId }, (err, result) => {
+        if (!err) {
+          result.forEach((item) => {
+            let toId = socketList[item.userId];
+            if (toId) {
+              socket.to(toId).emit("newGroupMemberJoin");
+              socket.emit("newGroupMemberJoin");
+            }
+          });
+        }
+      });
     });
   });
 };

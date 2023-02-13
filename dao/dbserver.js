@@ -496,3 +496,31 @@ exports.getGroupMembers = (whereStr, callback) => {
     callback(err, result);
   });
 };
+
+// 添加群组成员
+exports.addGroupMember = (data) => {
+  let user = new GroupMember(data);
+
+  user.save();
+};
+
+// 根据 id 获取用户信息
+exports.getUserInfoById = (whereStr, callback) => {
+  User.findOne(
+    whereStr,
+    { pwd: 0, privateKey: 0, publicKey: 0 },
+    (err, result) => {
+      callback(err, result);
+    }
+  );
+};
+
+// 根据 id 获取群组信息
+exports.getGroupInfoById = (whereStr, callback) => {
+  Group.findOne(
+    whereStr,
+    (err, result) => {
+      callback(err, result);
+    }
+  );
+};

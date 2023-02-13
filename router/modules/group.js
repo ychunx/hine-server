@@ -58,4 +58,17 @@ module.exports = (router) => {
 
     dbserver.buildGroup({ userId, name, imgUrl, time }, callback);
   });
+
+  // 根据 id 获取群组信息
+  router.post("/group/getgroupinfobyid", (req, res) => {
+    let callback = (err, result) => {
+      if (err) {
+        res.cc(err);
+      } else {
+        res.cc(result, 200);
+      }
+    };
+
+    dbserver.getGroupInfoById({ _id: req.body.groupId }, callback);
+  });
 };

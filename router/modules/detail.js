@@ -212,4 +212,17 @@ module.exports = (router) => {
 
     dbserver.updateFriend(whereStr, { nickname: newNickname }, callback);
   });
+
+  // 根据 id 获取用户信息
+  router.post("/detail/getuserinfobyid", (req, res) => {
+    let callback = (err, result) => {
+      if (err) {
+        res.cc(err);
+      } else {
+        res.cc(result, 200);
+      }
+    };
+
+    dbserver.getUserInfoById({ _id: req.body.userId }, callback);
+  });
 };
