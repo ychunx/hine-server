@@ -98,4 +98,33 @@ module.exports = (router) => {
       }
     });
   });
+
+  // 上传群组聊天图片
+  router.post("/upload/groupimage", (req, res) => {
+    const form = formidable({});
+
+    form.parse(req, (err, fields, files) => {
+      let { mimetype, newFilename, originalFilename, filepath } =
+        files.uploadGroupImgFile;
+      if (mimetype.indexOf("image") != "-1") {
+        let fileType = originalFilename.replace(/.+\./, "");
+        let toPath = `./public/msgGroupImages/${newFilename}.${fileType}`;
+
+        mkdirs.mkdir("../public/msgGroupImages", (err) => {
+          if (err) {
+            res.cc(err);
+          } else {
+            try {
+              fs.copyFileSync(filepath, toPath);
+              res.cc(`${address}/msgGroupImages/${newFilename}.${fileType}`, 200);
+            } catch (error) {
+              res.cc(error);
+            }
+          }
+        });
+      } else {
+        res.cc("上传文件非图片", 201);
+      }
+    });
+  });
 };

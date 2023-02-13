@@ -702,7 +702,7 @@ Hine 聊天软件服务器
 {
     "status": 200,
     "msg": {
-        "allGroupMsgs": [
+        "groupMsgs": [
             {
                 "groupId": "63e8f1a7437fb9398cc7ff7b",
                 "unReadNum": 1,
@@ -724,7 +724,7 @@ Hine 聊天软件服务器
                 ]
             },
         ],
-        "allInfos": [
+        "userInfos": [
             {
                 "groupId": "63e8f1a7437fb9398cc7ff7b",
                 "memberInfos": [
@@ -1045,6 +1045,34 @@ Hine 聊天软件服务器
 | 字段          | 类型 | 说明         | 必需 |
 | ------------- | ---- | ------------ | ---- |
 | uploadImgFile | File | 聊天图像文件 | 是   |
+
+返回值：
+
+| 字段   | 类型   | 说明     |
+| ------ | ------ | -------- |
+| status | int    | 状态码   |
+| msg    | String | 文件路径 |
+
+示例：
+
+```json
+{
+    "status": 200,
+    "msg": 'http://xxx.com/xxx/xxx.png'
+}
+```
+
+4. 上传群组聊天图片
+
+> 地址：/upload/groupimage
+>
+> 请求方式： POST
+
+参数：
+
+| 字段               | 类型 | 说明             | 必需 |
+| ------------------ | ---- | ---------------- | ---- |
+| uploadGroupImgFile | File | 群组聊天图像文件 | 是   |
 
 返回值：
 

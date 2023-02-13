@@ -56,5 +56,21 @@ module.exports = (io) => {
         socket.to(toId).emit("acceptedApply");
       }
     });
+
+    // 发送群组消息
+    socket.on("sendGroupMsg", (data) => {
+      dbserver.insertGroupMsg(data)
+      let groupId = data.groupId
+      dbserver.getGroupMembers({groupId}, (err, result) => {
+        if (!err) {
+          result.forEach(item => {
+            let toId = socketList[item.userId]
+            if (toId && item.userId != data.userId) {
+              socket.to(toId).emit("receiveGroupMsg", data);
+            }
+          })
+        }
+      })
+    });
   });
 };

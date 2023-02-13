@@ -84,7 +84,7 @@ module.exports = (router) => {
     dbserver.deleteChatRecord({ userId, friendId }, true, callback);
   });
 
-  // 获取所有群组聊天记录
+  // 获取所有群组聊天记录和信息
   router.get("/chat/getallgroupmsgs", (req, res) => {
     let callback = (err, result) => {
       if (err) {
@@ -93,11 +93,11 @@ module.exports = (router) => {
         res.cc(result, 200);
       }
     };
-    
+
     dbserver.getAllGroupMsgs({userId: req.jwt_id}, callback);
   });
 
-  // 已读群组消息和信息
+  // 已读群组消息
   router.post("/chat/readgroupmsgs", (req, res) => {
     let userId = req.jwt_id;
     let groupId = req.body.groupId;
