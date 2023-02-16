@@ -179,7 +179,7 @@ module.exports = (router) => {
     dbserver.updateUser({ _id }, { signature }, callback);
   });
 
-  // 修改头像，没写完，需要上传头像至服务器后得到头像链接再调用接口
+  // 修改头像
   router.post("/detail/portrait", (req, res) => {
     let _id = req.jwt_id;
     let imgUrl = req.body.newPortraitUrl;

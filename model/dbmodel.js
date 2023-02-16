@@ -42,7 +42,7 @@ const GroupSchema = new Schema({
   name: { type: String, unique: true }, // 群名称（唯一）
   userId: { type: Schema.Types.ObjectId, ref: "User" }, // 群主id
   imgUrl: { type: String, default: "http://localhost:3000/user.jpg" }, // 群头像链接
-  notice: { type: String }, // 群公告
+  notice: { type: String, default: "无" }, // 群公告
   time: { type: Date }, // 建立时间
 });
 

@@ -94,7 +94,7 @@ module.exports = (router) => {
       }
     };
 
-    dbserver.getAllGroupMsgs({userId: req.jwt_id}, callback);
+    dbserver.getAllGroupMsgs({ userId: req.jwt_id }, callback);
   });
 
   // 已读群组消息

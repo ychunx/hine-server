@@ -1,4 +1,5 @@
 // 文件上传接口
+// ★应新建集合存储图片位置，以供删除
 const formidable = require("formidable");
 const fs = require("fs");
 
@@ -38,7 +39,7 @@ module.exports = (router) => {
     });
   });
 
-  // 上传群头像
+  // 上传群组头像
   router.post("/upload/groupportrait", (req, res) => {
     const form = formidable({});
 
@@ -116,7 +117,10 @@ module.exports = (router) => {
           } else {
             try {
               fs.copyFileSync(filepath, toPath);
-              res.cc(`${address}/msgGroupImages/${newFilename}.${fileType}`, 200);
+              res.cc(
+                `${address}/msgGroupImages/${newFilename}.${fileType}`,
+                200
+              );
             } catch (error) {
               res.cc(error);
             }

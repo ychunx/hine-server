@@ -51,7 +51,7 @@ module.exports = (router) => {
       if (err) {
         res.cc(err);
       } else {
-        //emailserver.emailSignUp(data.name, data.email)
+        emailserver.emailSignUp(data.name, data.email);
         res.cc("注册成功", 200);
       }
     };

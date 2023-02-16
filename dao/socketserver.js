@@ -22,7 +22,7 @@ module.exports = (io) => {
       console.log(2, socketList);
     });
 
-    // 发送消息，没出错处理，没成功回复
+    // 发送消息
     socket.on("sendMsg", (data) => {
       let toId = socketList[data.friendId];
       dbserver.insertMsg(data);
@@ -35,7 +35,7 @@ module.exports = (io) => {
       }
     });
 
-    // 申请添加好友，没出错处理，没成功回复
+    // 申请添加好友
     socket.on("friendApply", (data) => {
       let toId = socketList[data.friendId];
       if (data.content == "") {
@@ -101,7 +101,6 @@ module.exports = (io) => {
             let toId = socketList[item.userId];
             if (toId) {
               socket.to(toId).emit("newGroupMemberJoin");
-              socket.emit("newGroupMemberJoin");
             }
           });
         }

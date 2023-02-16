@@ -388,6 +388,22 @@ exports.addGroupMember = (whereStr, callback) => {
     callback(err, result);
   });
 };
+exports.addGroupMemberByInvite = async (whereStr, callback) => {
+  try {
+    let res = await GroupMember.countDocuments(whereStr);
+    if (res < 1) {
+      whereStr.time = new Date();
+      let groupMember = new GroupMember(whereStr);
+      groupMember.save();
+      callback(null, true);
+    } else {
+      // 已存在
+      callback(null, false);
+    }
+  } catch (error) {
+    callback(error);
+  }
+};
 
 // 插入群组消息
 exports.insertGroupMsg = async (data) => {
@@ -470,6 +486,7 @@ exports.getAllGroupMsgs = async (whereStr, callback) => {
           { groupId: item.groupId },
           { userId: 1, name: 1 }
         );
+
         let infos = [];
         await Promise.all(
           users.map(async (user) => {
@@ -477,9 +494,17 @@ exports.getAllGroupMsgs = async (whereStr, callback) => {
               { _id: user.userId },
               { name: 1, imgUrl: 1 }
             );
-            infos.push(info);
+
+            let data = {};
+            data._id = info._id;
+            data.name = info.name;
+            data.imgUrl = info.imgUrl;
+            data.nickName = user.name;
+
+            infos.push(data);
           })
         );
+
         userInfos.push({ groupId: item.groupId, memberInfos: infos });
       })
     );
@@ -516,11 +541,127 @@ exports.getUserInfoById = (whereStr, callback) => {
 };
 
 // 根据 id 获取群组信息
-exports.getGroupInfoById = (whereStr, callback) => {
-  Group.findOne(
-    whereStr,
-    (err, result) => {
-      callback(err, result);
+exports.getGroupInfoById = async (whereStr, callback) => {
+  try {
+    let groupInfo = await Group.findOne(whereStr);
+
+    let users = await GroupMember.find({ groupId: whereStr }, { userId: 1 });
+    let memberInfos = [];
+    await Promise.all(
+      users.map(async (user) => {
+        let info = await User.findOne(
+          { _id: user.userId },
+          { name: 1, imgUrl: 1 }
+        );
+
+        let data = {};
+        data._id = info._id;
+        data.name = info.name;
+        data.imgUrl = info.imgUrl;
+
+        memberInfos.push(data);
+      })
+    );
+
+    callback(null, { groupInfo, memberInfos });
+  } catch (error) {
+    callback(error);
+  }
+};
+
+// 更改群组头像
+exports.updateGroupPortrait = (whereStr, imgUrl, callback) => {
+  Group.updateOne(whereStr, { imgUrl }, (err, result) => {
+    callback(err, result);
+  });
+};
+
+// 更改群组名称
+exports.updateGroupName = (whereStr, name, callback) => {
+  Group.updateOne(whereStr, { name }, (err, result) => {
+    console.log(err, result);
+    callback(err, result);
+  });
+};
+
+// 更改群组公告
+exports.updateGroupNotice = (whereStr, notice, callback) => {
+  Group.updateOne(whereStr, { notice }, (err, result) => {
+    callback(err, result);
+  });
+};
+
+// 更改群内昵称
+exports.updateGroupNickName = (whereStr, name, callback) => {
+  GroupMember.updateOne(whereStr, { name }, (err, result) => {
+    callback(err, result);
+  });
+};
+
+// 移除群组成员
+exports.removeGroupMember = async (data, callback) => {
+  let whereStr1 = {
+    groupId: data.groupId,
+    userId: data.userId,
+  };
+  let whereStr2 = {
+    groupId: data.groupId,
+    userId: data.memberId,
+  };
+
+  try {
+    // 先判断该用户是不是群主
+    let isLeader = await Group.countDocuments(whereStr1);
+    console.log(isLeader);
+    if (isLeader > 0) {
+      this.deleteGroupMember(whereStr2, (err, result) => {
+        if (!err) {
+          this.deleteGroupChatRecord(whereStr2);
+        }
+      });
+
+      callback(null, "移除成功");
+    } else {
+      callback(null, "没有权限");
     }
-  );
+  } catch (error) {
+    callback(error);
+  }
+};
+
+// 删除群组成员
+exports.deleteGroupMember = (whereStr, callback) => {
+  GroupMember.deleteOne(whereStr, (err, result) => {
+    callback(err, result);
+  });
+};
+
+// 删除群组
+exports.deleteGroup = (whereStr, callback) => {
+  Group.deleteOne(whereStr, (err, result) => {
+    if (err) {
+      callback(err);
+    } else {
+      try {
+        this.deleteGroupChatRecord({ grouId: whereStr.grouId });
+        this.deleteGroupMembersRecord({ grouId: whereStr.grouId });
+      } catch (error) {
+        callback(error);
+      }
+    }
+  });
+};
+
+// 删除群组聊天记录
+exports.deleteGroupChatRecord = (whereStr) => {
+  GroupMessage.deleteMany(whereStr, (err, result) => {
+    console.log(err, result);
+  });
+};
+
+// 删除群组成员记录
+exports.deleteGroupMembersRecord = (whereStr) => {
+  GroupMember.deleteMany(whereStr, (err, result) => {
+    console.log(err, result);
+  });
 };
