@@ -1,1568 +1,215 @@
-Hine 聊天软件服务器
+# Hine Server
 
-努力开发中......
+Hine Server 是即时通讯应用 [Hine](https://github.com/ychunx/hine) 的 Node.js 后端。它用 Express 提供注册登录、资料、好友、群组和聊天记录接口，用 Socket.IO 推送在线状态和消息，用 MongoDB 保存用户、关系、私聊和群聊数据。私聊分为普通消息和加密消息：注册时服务端生成 RSA 密钥对，加密正文由前端完成，本服务负责入库并按是否加密分别存取和转发。
 
-## 接口文档
+## 功能
 
-> 注意：由于本人是前后端并行开发的，所以只将输入规范校验放在了前端
->
-> ##### 接口
->
-> 1. 注册登录
->
->    用户名占用、邮箱占用、注册、登录、获取用户信息
->
-> 2. 搜索
->
->    搜索用户、获取好友关系、搜索群组、获取群组关系
->
-> 3. 好友管理
->
->    拒绝添加好友、删除好友、获取好友列表、获取好友申请列表
->
-> 4. 用户资料
->
->    修改邮箱、密码、性别、出生日期、个性签名、头像、好友备注
->
->    根据用户 id 获取用户信息
->
-> 5. 聊天
->
->    获取聊天记录、已读消息、删除聊天记录（加密、非加密和群组）
->
-> 6. 群组
->
->    群组名占用、新建群组
->
->    修改头像、名称、公告、群内昵称
->
->    邀请加入群组、删除成员、退出群组、解散群组
->
->    根据群组 id 获取群组信息
->
-> 7. 文件上传
->
->    上传头像、群组头像、聊天图片、群组聊天图片文件
->
-> ##### socket.io
->
-> 1. 上线
-> 2. 下线
-> 3. 申请添加好友
-> 4. 同意添加好友
-> 5. 加入群聊
-> 6. 发送消息
-> 7. 发送群组消息
+- 用户名与邮箱查重、注册、登录。登录账号可以是用户名或邮箱，密码以 bcrypt 哈希保存。
+- JWT 鉴权。除注册和登录外，`/api` 下的接口都要在请求头携带 `token`，有效期见 `config/tokenConfig.js` 的 `expiresIn`（`168h`）。
+- 修改用户名、邮箱、密码、性别、出生日期、个性签名、头像和好友备注；按用户 id 查询资料。
+- 按用户名或邮箱搜索用户，按群名搜索群组，并查询好友关系、用户是否在群内。
+- 好友申请与同意走 Socket.IO；拒绝、删除、好友列表和申请列表走 HTTP。删除好友时同时删除双方聊天记录。
+- 普通私聊与加密私聊分开拉取、标已读和删除。群消息可整群拉取，并按成员记录未读数。
+- 建群，修改群头像、群名、公告和群内昵称，邀请成员、移除成员、退群、解散群。
+- 上传用户头像、群头像、私聊图片和群聊图片，文件放在 `public` 下并由 Express 静态托管。
+- 同一账号新连接上线时，向旧连接推送 `forceOffline`。
+- 注册成功后通过 QQ 邮箱发送一封欢迎邮件。邮件失败只写日志，不影响注册结果。
 
-#### 注册
-1. 查询用户名是否已被占用
-> 地址：/signup/nameinuse
->
-> 请求方式：GET
+## 技术栈
 
-参数：
+| 用途 | 选型 |
+| --- | --- |
+| 运行时 | Node.js（CommonJS） |
+| HTTP | Express 4 |
+| 实时通信 | Socket.IO 2 |
+| 数据库 | MongoDB，Mongoose 6 |
+| 鉴权 | jsonwebtoken |
+| 密码 | bcryptjs |
+| 密钥与加密消息配套 | jsrsasign（注册时生成 1024 位 RSA）、crypto-js（用密码做 AES） |
+| 邮件 | nodemailer，QQ 邮箱 SMTP |
+| 上传 | formidable 2 |
 
-| 字段 | 类型   | 说明   | 必需 |
-| ---- | ------ | ------ | ---- |
-| name | String | 用户名 | 是   |
+`package.json` 没有 `start` 脚本。入口文件是 `hine.js`。
 
-返回值：
+## 项目结构
 
-| 字段   | 类型   | 说明             |
-| ------ | ------ | ---------------- |
-| status | int    | 状态码           |
-| msg    | String | 该用户名用户数量 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": "0"
-}
+```
+hine.js                  入口：HTTP 3000，Socket.IO 3001
+config/db.js             MongoDB 连接
+config/tokenConfig.js    JWT 密钥与过期时间
+config/secret.js         QQ 邮箱凭据（自行创建，已被 gitignore）
+model/dbmodel.js         User、Friend、Message、Group、GroupMember、GroupMessage
+dao/dbserver.js          数据访问
+dao/socketserver.js      Socket.IO 事件
+dao/emailserver.js       注册欢迎邮件
+dao/mkdirs.js            创建上传目录
+router/index.js          跨域、token 校验，挂到 /api
+router/modules/          注册、登录、搜索、好友、聊天、资料、上传、群组
+public/                  静态文件；默认头像 user.png，上传图片也写到这里
 ```
 
-2. 查询邮箱是否已被占用
+用户文档字段包括邮箱、用户名、密码哈希、公钥、私钥、性别、生日、签名、头像和注册时间。好友关系是双向记录，`state` 为 `0`（好友）、`1`（申请方）、`2`（被申请方）。消息 `types` 为 `0`（文字）或 `1`（图片），并用 `encrypted` 区分普通消息和加密消息。
 
-> 地址：/signup/emailinuse
->
-> 请求方式：GET
+## 本地运行
 
-参数：
+需要本机已安装 Node.js、npm，以及监听 `127.0.0.1:27017` 的 MongoDB。仓库没有环境变量，也没有数据库初始化脚本。库名 `hine` 会在第一次写入时由 MongoDB 创建。
 
-| 字段  | 类型   | 说明         | 必需 |
-| ----- | ------ | ------------ | ---- |
-| email | String | 电子邮件地址 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明               |
-| ------ | ------ | ------------------ |
-| status | int    | 状态码             |
-| msg    | String | 该邮箱地址用户数量 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": "0"
-}
+```bash
+git clone https://github.com/ychunx/hine-server.git
+cd hine-server
+npm install
 ```
 
-3. 注册
+启动前准备三个写在源码里的配置。
 
-> 地址：/signup/adduser
->
-> 请求方式：POST
+**数据库。** `config/db.js` 连接 `mongodb://127.0.0.1:27017/hine`。地址或库名不同时，改这一行。
 
-参数：
+**JWT。** 签发和校验使用 `config/tokenConfig.js` 的 `jwtSecretKey`。给别人演示或部署前，换成只有你自己知道的字符串，并保持 `expiresIn` 与预期登录时长一致。
 
-| 字段  | 类型   | 说明         | 必需 |
-| ----- | ------ | ------------ | ---- |
-| name  | String | 用户名       | 是   |
-| email | String | 电子邮件地址 | 是   |
-| psw   | String | 密码         | 是   |
+**邮件。** `dao/emailserver.js` 在加载时就会读取 `config/secret.js`。该文件不在仓库里（`.gitignore` 已忽略 `/config/secret.js`）。缺少它时进程无法启动。在 `config` 目录新建：
 
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": "注册成功"
-}
+```js
+module.exports = {
+  qq: {
+    user: "你的QQ邮箱",
+    pass: "QQ邮箱SMTP授权码",
+  },
+};
 ```
 
-#### 登录
+`pass` 是 QQ 邮箱的 SMTP 授权码。发件人写在 `dao/emailserver.js` 的 `from` 字段，需要和 `user` 属于同一邮箱，欢迎信才能发出。暂时不需要发信时，仍要保留这个文件，否则 `require` 会失败；凭据无效时，注册接口仍可成功，只是控制台会打印邮件发送失败。
 
-1. 登录
+`hine.js` 直接依赖 `body-parser`。它没有写进 `package.json` 的 `dependencies`，由 Express 间接安装，`npm install` 之后可以解析到。
 
-> 地址：/signin/login
->
-> 请求方式：POST
-
-参数：
-
-| 字段  | 类型   | 说明         | 必需   |
-| ----- | ------ | ------------ | ------ |
-| name  | String | 用户名       | 二选一 |
-| email | String | 电子邮件地址 | 二选一 |
-| psw   | String | 密码         | 是     |
-
-返回值：
-
-| 字段   | 类型   | 说明                                   |
-| ------ | ------ | -------------------------------------- |
-| status | int    | 状态码，200登录成功，201账号或密码错误 |
-| msg    | String | token                                  |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": 'xxxxxxx'
-}
+```bash
+node hine.js
 ```
 
----
+看到数据库连接成功，以及 `Hine 服务器已在 3000 端口启动！`，即表示 HTTP 已在 3000 端口监听。Socket.IO 在 3001 端口。静态资源示例：`http://localhost:3000/user.png`。
+
+上传接口返回的图片地址前缀写死为 `http://localhost:3000`（`router/modules/uploadFile.js`）。改端口时要一起改这里，以及模型里默认头像所用的同一主机名。
+
+## 接口概览
+
+业务路由都挂在 `/api` 下。响应体由 `res.cc` 生成，形如 `{ "status": 200, "msg": ... }`。这里的 `status` 是业务码，成功为 `200`；这条响应的 HTTP 状态码通常仍是 200。未匹配的路径走 404，未捕获的异常走 500。`msg` 在成功时可能是字符串、对象或数组。
+
+跨域允许任意来源，允许的请求头为 `Content-Type` 和 `token`。路径里包含 `signup` 或 `login` 的接口不校验 token，其余接口从请求头 `token` 读取 JWT，并把用户 id 放到后续处理里。
+
+### 注册与登录
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/signup/nameinuse/:name` | 返回该用户名已有的用户数 |
+| GET | `/api/signup/emailinuse/:email` | 返回该邮箱已有的用户数 |
+| POST | `/api/signup/adduser` | 注册。正文 `name`、`email`、`pwd` |
+| POST | `/api/signin/login` | 登录。正文 `acct`（用户名或邮箱）、`pwd`。成功时 `msg` 为 token |
+| GET | `/api/signin/getUserInfo` | 当前登录用户资料 |
+
+### 搜索
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/search/user` | 正文 `key`，按用户名或邮箱检索，结果不含自己 |
+| POST | `/api/search/relation` | 正文 `userId`、`friendId`。`200` 好友，`201` 申请中，`202` 对方已申请，`203` 非好友 |
+| POST | `/api/search/group` | 正文 `key`，按群名检索 |
+| POST | `/api/search/isingroup` | 正文 `userId`、`groupId`。`200` 在群内，`201` 不在 |
 
-接下来的所有接口请求头都需要有token
+### 好友
 
----
+好友申请和同意不在下表，见 Socket.IO。
 
-2. 获取用户信息
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/friend/reject` | 正文 `friendId`，拒绝申请 |
+| POST | `/api/friend/delete` | 正文 `friendId`，删除好友和双方聊天记录 |
+| GET | `/api/friend/getfriends` | 好友列表，含备注 |
+| GET | `/api/friend/getfriendapplys` | 收到的好友申请及验证消息 |
 
-> 地址：/signin/getuserinfo
->
-> 请求方式：GET
+### 聊天记录
 
-参数：无
+实时收发走 Socket.IO。下表只负责历史记录。
 
-返回值：
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/chat/getallmsgs` | 全部普通私聊及好友信息、未读数 |
+| GET | `/api/chat/getallencryptedmsgs` | 全部加密私聊 |
+| POST | `/api/chat/readfriendmsgs` | 正文 `friendId`，普通消息标已读 |
+| POST | `/api/chat/readfriendencryptedmsgs` | 正文 `friendId`，加密消息标已读 |
+| POST | `/api/chat/delete` | 正文 `friendId`，删除普通私聊记录 |
+| POST | `/api/chat/deleteencrypted` | 正文 `friendId`，删除加密私聊记录 |
+| GET | `/api/chat/getallgroupmsgs` | 当前用户所在群的消息、群资料和成员信息 |
+| POST | `/api/chat/readgroupmsgs` | 正文 `groupId`，该成员的群未读数清零 |
 
-| 字段   | 类型 | 说明     |
-| ------ | ---- | -------- |
-| status | int  | 状态码   |
-| msg    | JSON | 用户信息 |
+### 资料
 
-示例：
+修改用户名、邮箱、密码时，正文要带当前密码 `pwd`。
 
-```json
-{
-    "status": 200,
-    "msg": {
-    	name: 'zs',
-        email: 'xxx@xx.com'
-        imgUrl: 'user.png',
-        sex: '',
-        birth: ''
-        ...
-    }
-}
-```
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/detail/name` | `pwd`、`newName` |
+| POST | `/api/detail/email` | `pwd`、`newEmail` |
+| POST | `/api/detail/pwd` | `pwd`、`newPwd` |
+| POST | `/api/detail/sex` | `newSex` |
+| POST | `/api/detail/birth` | `newBirth` |
+| POST | `/api/detail/signature` | `newSignature` |
+| POST | `/api/detail/portrait` | `newPortraitUrl`，只更新资料里的头像地址 |
+| POST | `/api/detail/nickname` | `userId`、`friendId`、`newNickname` |
+| POST | `/api/detail/getuserinfobyid` | `userId`。不返回密码和密钥 |
 
-#### 搜索
+### 上传
 
-1. 搜索用户
+`multipart/form-data`，且需要 `token`。非图片返回业务码 `201`。成功时 `msg` 为 `http://localhost:3000/...` 形式的地址。
 
-> 地址：/search/user
->
-> 请求方式：POST
+| 方法 | 路径 | 表单字段 | 保存目录 |
+| --- | --- | --- | --- |
+| POST | `/api/upload/portrait` | `portraitFile` | `public/portraitImages` |
+| POST | `/api/upload/groupportrait` | `groupPortraitFile` | `public/groupPortraitImages` |
+| POST | `/api/upload/image` | `uploadImgFile` | `public/msgImages` |
+| POST | `/api/upload/groupimage` | `uploadGroupImgFile` | `public/msgGroupImages` |
 
-参数：
+### 群组
 
-| 字段 | 类型   | 说明                   | 必需 |
-| ---- | ------ | ---------------------- | ---- |
-| key  | String | 用户名或邮箱地址关键词 | 是   |
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/group/nameinuse/:name` | 返回该群名已有的群数量 |
+| POST | `/api/group/build` | `name`、`friends`（成员 id 数组）、可选 `imgUrl`。创建者会加入成员列表，并写入一条「创建群组」消息 |
+| POST | `/api/group/getgroupinfobyid` | `groupId`，返回群资料和成员 |
+| POST | `/api/group/updateportrait` | `groupId`、`imgUrl` |
+| POST | `/api/group/updatename` | `groupId`、`newName` |
+| POST | `/api/group/updatenotice` | `groupId`、`newNotice` |
+| POST | `/api/group/invite` | `groupId`、`userId`。已在群内时业务码 `201` |
+| POST | `/api/group/removegroupmember` | `groupId`、`memberId` |
+| POST | `/api/group/updatenickname` | `groupId`、`newNickName` |
+| POST | `/api/group/exitgroup` | `groupId`。退出不删除群聊天记录 |
+| POST | `/api/group/breakgroup` | `groupId`，解散群 |
 
-返回值：
+群头像、群名、公告的更新条件带有群主 id。字段名以本表为准。
 
-| 字段   | 类型     | 说明           |
-| ------ | -------- | -------------- |
-| status | int      | 状态码         |
-| msg    | 对象数组 | 关键词用户信息 |
+### Socket.IO
 
-示例：
+前端连接 `http://localhost:3001`。连接本身不校验 token，事件载荷里的用户 id 由客户端传入。
 
-```json
-{
-    "status": 200,
-    "msg": [
-        {
-            _id: 'asdafafwaf'
-            name: 'zs',
-            email: 'zs@xx.com',
-            imgUrl: 'user,png'
-        },
-    ]
-}
-```
+| 客户端发送 | 载荷要点 | 服务端行为 | 推送给在线客户端 |
+| --- | --- | --- | --- |
+| `online` | 用户 id | 记录 socket，同一用户只保留最新连接 | 旧连接收到 `forceOffline` |
+| `offline` | 用户 id | 从在线表移除 | 无 |
+| `friendApply` | `friendId`、`userId`、`content`、`types` | 尚无关系时建立双向申请，并写入验证消息。`content` 为空时使用「请求添加好友」 | 对方 `receiveApply` |
+| `agreeApply` | `friendId`、`userId` | 仅被申请方可以把关系改为好友，并写入一条系统私聊 | 双方 `acceptedApply` |
+| `groupApply` | `groupId`、`userId`、`content`、`types` | 直接加入群并写入一条群消息。`content` 为空时使用「加入了群组」 | 在线成员 `newGroupMemberJoin` |
+| `sendMsg` | 消息对象，含 `friendId`、`encrypted` | 写入私聊。`encrypted` 为真时走加密通道 | `receiveMsg` 或 `receiveEncryptedMsg` |
+| `sendGroupMsg` | 消息对象，含 `groupId` | 写入群消息并增加其他成员未读数 | 其他在线成员 `receiveGroupMsg` |
 
-2. 获取好友关系
+## 与前端 hine 的配合
 
-> 地址：/search/relation
->
-> 请求方式：POST
+配套界面在 [ychunx/hine](https://github.com/ychunx/hine)，是 Vue 2、Vue Router 和 Vuex 项目。它不代理接口，而是在浏览器里直连本服务：
 
-参数：
+- `src/api/request.js` 把 axios 的 `baseURL` 设为 `http://localhost:3000/api`。请求拦截器从 `localStorage` 读取 token，写入请求头 `token`。页面使用的路径与本仓库 `router/modules` 一致，例如登录 `POST /signin/login`、当前用户 `GET /signin/getUserInfo`。
+- 登录成功后，前端把响应里的 token 存入 `localStorage`，再拉取用户资料。退出登录只清本地状态，本仓库没有登出接口；下线时前端发送 Socket 事件 `offline`。
+- `src/main.js` 用仓库内的 `weapp.socket.io.js` 连接 `http://localhost:3001`。`App.vue` 监听 `receiveMsg`、`receiveEncryptedMsg`、`receiveGroupMsg`、`receiveApply`、`acceptedApply`、`newGroupMemberJoin` 和 `forceOffline`，并在拿到用户 id 后发送 `online`。
+- 加密会话在 `src/pages/Msg/EncryptedDialog`：用 jsencrypt 分别用对方公钥和自己的公钥加密正文，以 `|` 拼成一条 `content`，再 `sendMsg`，并带 `encrypted: true`。本服务不解密，只按该标记存储和推送。好友列表接口会带回对方公钥，供这次加密使用。
 
-| 字段     | 类型   | 说明           | 必需 |
-| -------- | ------ | -------------- | ---- |
-| userId   | String | 当前用户id     | 是   |
-| friendId | String | 查询对象用户id | 是   |
+本地同时跑两端时，先启动 MongoDB 和 `node hine.js`，再在 hine 仓库执行 `npm run serve`。两端都假定接口在 3000、Socket 在 3001。
 
-返回值：
+## 许可
 
-| 字段   | 类型   | 说明                                                     |
-| ------ | ------ | -------------------------------------------------------- |
-| status | int    | 状态码，200好友、201申请中、202对方已发出申请、203非好友 |
-| msg    | String | 好友关系描述信息                                         |
-
-示例：
-
-```json
-{
-    "status": 201,
-    "msg": '申请中'
-}
-```
-
-3. 搜索群组
-
-> 地址：/search/group
->
-> 请求方式：POST
-
-参数：
-
-| 字段 | 类型   | 说明         | 必需 |
-| ---- | ------ | ------------ | ---- |
-| key  | String | 群名称关键词 | 是   |
-
-返回值：
-
-| 字段   | 类型     | 说明           |
-| ------ | -------- | -------------- |
-| status | int      | 状态码         |
-| msg    | 对象数组 | 关键词群组信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": [
-        {
-            _id: 'jafhkjsafwq'
-            name: '幸福一家人',
-            imgUrl: 'user,png'
-        },
-    ]
-}
-```
-
-4. 查询用户是否在群内
-
-> 地址：/search/isingroup
->
-> 请求方式：POST
-
-参数：
-
-| 字段    | 类型   | 说明         | 必需 |
-| ------- | ------ | ------------ | ---- |
-| userId  | String | 当前用户id   | 是   |
-| groupId | String | 查询对象群id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明                             |
-| ------ | ------ | -------------------------------- |
-| status | int    | 状态码，200在群内、201非群内成员 |
-| msg    | String | 群和用户关系的描述信息           |
-
-示例：
-
-```json
-{
-    "status": 201,
-    "msg": '非群内成员'
-}
-```
-
-
-
-#### 好友
-
-1. 拒绝申请
-
-> 地址：/friend/reject
->
-> 请求方式： POST
-
-参数：
-
-| 字段     | 类型   | 说明     | 必需 |
-| -------- | ------ | -------- | ---- |
-| friendId | String | 申请方id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '拒绝成功'
-}
-```
-
-2. 删除好友
-
-> 地址：/friend/delete
->
-> 请求方式： POST
-
-参数：
-
-| 字段     | 类型   | 说明         | 必需 |
-| -------- | ------ | ------------ | ---- |
-| friendId | String | 被删除好友id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '删除成功'
-}
-```
-
-3. 获取好友列表
-
-> 地址：/friend/getfriends
->
-> 请求方式： GET
-
-参数：无
-
-返回值：
-
-| 字段   | 类型  | 说明         |
-| ------ | ----- | ------------ |
-| status | int   | 状态码       |
-| msg    | Array | 好友列表信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": [
-        {
-            _id: 'asfasfa',
-            name: 'zs',
-            imgUrl: 'user.png'，
-            nickname: 'xiaozhang'
-        }
-    ]
-}
-```
-
-4. 获取好友申请列表
-
-> 地址：/friend/getfriendapplys
->
-> 请求方式： GET
-
-参数：无
-
-返回值：
-
-| 字段   | 类型  | 说明             |
-| ------ | ----- | ---------------- |
-| status | int   | 状态码           |
-| msg    | Array | 好友申请列表信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": [
-    	{
-            name: 'zs',
-            imgUrl: 'user.png',
-            friendId: 'safafasf',
-            msgs: [
-                {
-                    content: '你好啊',
-                    time: '',	// 发送时间
-                }
-            ]
-        }
-    ]
-}
-```
-
-#### 聊天
-
-1. 获取所有非加密聊天记录
-
-> 地址：/chat/getallmsgs
->
-> 请求方式： GET
-
-参数：无
-
-返回值：
-
-| 字段   | 类型  | 说明                       |
-| ------ | ----- | -------------------------- |
-| status | int   | 状态码                     |
-| msg    | Array | 所有聊天记录和对应好友信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": [
-    	{
-            friendId: 'asfasdasfa',
-            name: 'zs',
-            nickname: 'xiaozhang',
-            imgUrl: 'user.png',
-            unReadNum: 1
-            allMsgs: [
-                {
-                    content: '你好',
-                    types: '0',
-                    time: '',
-                    read: false,
-                    encrypted: false,
-                    userId: ''	// 发送方id
-                    friendId: ''	// 接收方id
-                }
-            ]
-        }
-    ]
-}
-```
-
-2. 已读单个好友的所有非加密消息
-
-> 地址：/chat/readfriendmsgs
->
-> 请求方式： POST
-
-参数：
-
-| 字段     | 类型   | 说明       | 必需 |
-| -------- | ------ | ---------- | ---- |
-| friendId | String | 对象好友id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '请求成功'
-}
-```
-
-3. 获取所有加密聊天记录
-
-> 地址：/chat/getallencryptedmsgs
->
-> 请求方式： GET
-
-参数：无
-
-返回值：
-
-| 字段   | 类型  | 说明                           |
-| ------ | ----- | ------------------------------ |
-| status | int   | 状态码                         |
-| msg    | Array | 所有加密聊天记录和对应好友信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": [
-    	{
-            friendId: 'asfasdasfa',
-            name: 'zs',
-            nickname: 'xiaozhang',
-            imgUrl: 'user.png',
-            unReadNum: 1
-            allMsgs: [
-                {
-                    content: '你好',
-                    types: '0',
-                    time: '',
-                    read: true,
-                    encrypted: true,
-                    userId: ''	// 发送方id
-                    friendId: ''	// 接收方id
-                }
-            ]
-        }
-    ]
-}
-```
-
-4. 已读单个好友的所有加密消息
-
-> 地址：/chat/readfriendencryptedmsgs
->
-> 请求方式： POST
-
-参数：
-
-| 字段     | 类型   | 说明       | 必需 |
-| -------- | ------ | ---------- | ---- |
-| friendId | String | 对象好友id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '请求成功'
-}
-```
-
-5. 删除非加密聊天记录
-
-> 地址：/chat/delete
->
-> 请求方式：POST
-
-参数：
-
-| 字段     | 类型   | 说明       | 必需 |
-| -------- | ------ | ---------- | ---- |
-| friendId | String | 对象好友id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '删除成功'
-}
-```
-
-6. 删除加密聊天记录
-
-> 地址：/chat/deleteencrypted
->
-> 请求方式：POST
-
-参数：
-
-| 字段     | 类型   | 说明       | 必需 |
-| -------- | ------ | ---------- | ---- |
-| friendId | String | 对象好友id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '删除成功'
-}
-```
-
-7. 已读群组所有消息
-
-> 地址：/chat/readgroupmsgs
->
-> 请求方式： POST
-
-参数：
-
-| 字段    | 类型   | 说明       | 必需 |
-| ------- | ------ | ---------- | ---- |
-| groupId | String | 对象群组id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '请求成功'
-}
-```
-
-8. 获取所有群组消息和群成员信息
-
-> 地址：/chat/getallgroupmsgs
->
-> 请求方式： GET
-
-参数：无
-
-返回值：
-
-| 字段   | 类型   | 说明                     |
-| ------ | ------ | ------------------------ |
-| status | int    | 状态码                   |
-| msg    | String | 所有群组消息和群成员信息 |
-
-示例：
-
-```JSON
-{
-    "status": 200,
-    "msg": {
-        "groupMsgs": [
-            {
-                "groupId": "63e8f1a7437fb9398cc7ff7b",
-                "unReadNum": 1,
-                "joinTime": "2023-02-12T14:03:19.287Z",
-                "name": "1",
-                "userId": "63e734b3f354781166cafa05",
-                "imgUrl": "http://localhost:3000/user.png",
-                "time": "2023-02-12T14:03:19.287Z",
-                "allMsgs": [
-                    {
-                        "_id": "63e8f1a7437fb9398cc7ff7f",
-                        "groupId": "63e8f1a7437fb9398cc7ff7b",
-                        "userId": "63e734b3f354781166cafa05",
-                        "content": "创建群组",
-                        "types": "0",
-                        "time": "2023-02-12T14:03:19.297Z",
-                        "__v": 0
-                    }
-                ]
-            },
-        ],
-        "userInfos": [
-            {
-                "groupId": "63e8f1a7437fb9398cc7ff7b",
-                "memberInfos": [
-                    {
-                        "_id": "63e734b3f354781166cafa05",
-                        "name": "1",
-                        "imgUrl": "http://localhost:3000/user.png"
-                    },
-                    {
-                        "_id": "63e734b8f354781166cafa0b",
-                        "name": "2",
-                        "imgUrl": "http://localhost:3000/user.png"
-                    }
-                ]
-            },
-        ]
-    }
-}
-```
-
-#### 资料
-
-1. 修改用户名
-
-> 地址：/detail/name
->
-> 请求方式： POST
-
-参数：
-
-| 字段    | 类型   | 说明     | 必需 |
-| ------- | ------ | -------- | ---- |
-| pwd     | String | 密码     | 是   |
-| newName | String | 新用户名 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 202,
-    "msg": '用户名已被占用'
-}
-```
-
-2. 修改邮箱地址
-
-> 地址：/detail/email
->
-> 请求方式： POST
-
-参数：
-
-| 字段     | 类型   | 说明       | 必需 |
-| -------- | ------ | ---------- | ---- |
-| pwd      | String | 密码       | 是   |
-| newEmail | String | 新邮箱地址 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '修改成功'
-}
-```
-
-3. 修改密码
-
-> 地址：/detail/pwd
->
-> 请求方式： POST
-
-参数：
-
-| 字段   | 类型   | 说明   | 必需 |
-| ------ | ------ | ------ | ---- |
-| pwd    | String | 密码   | 是   |
-| newPwd | String | 新密码 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 201,
-    "msg": '原密码错误'
-}
-```
-
-4. 修改性别
-
-> 地址：/detail/sex
->
-> 请求方式： POST
-
-参数：
-
-| 字段   | 类型   | 说明   | 必需 |
-| ------ | ------ | ------ | ---- |
-| newSex | String | 新性别 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '修改成功'
-}
-```
-
-5. 修改出生日期
-
-> 地址：/detail/birth
->
-> 请求方式： POST
-
-参数：
-
-| 字段     | 类型   | 说明       | 必需 |
-| -------- | ------ | ---------- | ---- |
-| newBirth | String | 新出生日期 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '修改成功'
-}
-```
-
-6. 修改个性签名
-
-> 地址：/detail/signature
->
-> 请求方式： POST
-
-参数：
-
-| 字段         | 类型   | 说明       | 必需 |
-| ------------ | ------ | ---------- | ---- |
-| newSignature | String | 新个性签名 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '修改成功'
-}
-```
-
-7. 修改头像
-
-> 地址：/detail/portrait
->
-> 请求方式： POST
-
-参数：
-
-| 字段           | 类型   | 说明       | 必需 |
-| -------------- | ------ | ---------- | ---- |
-| newPortraitUrl | String | 新头像链接 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '修改成功'
-}
-```
-
-8. 修改好友备注
-
-> 地址：/detail/nickname
->
-> 请求方式：POST
-
-参数：
-
-| 字段        | 类型   | 说明       | 必需 |
-| ----------- | ------ | ---------- | ---- |
-| userId      | String | 用户id     | 是   |
-| friendId    | String | 好友id     | 是   |
-| newNickname | String | 新好友备注 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '修改成功'
-}
-```
-
-9. 根据 id 获取用户信息
-
-> 地址：/detail/getuserinfobyid
->
-> 请求方式：POST
-
-参数：
-
-| 字段   | 类型   | 说明    | 必需 |
-| ------ | ------ | ------- | ---- |
-| userId | String | 用户 id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": {
-        "_id": "63e734b3f35478xxxcafa05",
-        "email": "1@1.1",
-        "name": "1",
-        "sex": "男",
-        "birth": "2023-12-31T16:00:00.000Z",
-        "signature": "ta很懒，什么都没有留下~",
-        "imgUrl": "http://xxx/portraitImages/a32b42xxx11f2e3a586800.jpg",
-        "registerTime": "2023-12-31T06:24:51.026Z",
-    }
-}
-```
-
-#### 文件上传
-
-1. 上传用户头像
-
-> 地址：/upload/portrait
->
-> 请求方式： POST
-
-参数：
-
-| 字段         | 类型 | 说明             | 必需 |
-| ------------ | ---- | ---------------- | ---- |
-| portraitFile | File | 用户头像图像文件 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 文件路径 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": 'http://xxx.com/xxx/xxx.png'
-}
-```
-
-2. 上传群组头像
-
-> 地址：/upload/groupportrait
->
-> 请求方式： POST
-
-参数：
-
-| 字段              | 类型 | 说明           | 必需 |
-| ----------------- | ---- | -------------- | ---- |
-| groupPortraitFile | File | 群头像图像文件 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 文件路径 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": 'http://xxx.com/xxx/xxx.png'
-}
-```
-
-3. 上传聊天图片
-
-> 地址：/upload/image
->
-> 请求方式： POST
-
-参数：
-
-| 字段          | 类型 | 说明         | 必需 |
-| ------------- | ---- | ------------ | ---- |
-| uploadImgFile | File | 聊天图像文件 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 文件路径 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": 'http://xxx.com/xxx/xxx.png'
-}
-```
-
-4. 上传群组聊天图片
-
-> 地址：/upload/groupimage
->
-> 请求方式： POST
-
-参数：
-
-| 字段               | 类型 | 说明             | 必需 |
-| ------------------ | ---- | ---------------- | ---- |
-| uploadGroupImgFile | File | 群组聊天图像文件 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 文件路径 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": 'http://xxx.com/xxx/xxx.png'
-}
-```
-
-#### 群组
-
-1. 查询群组名称是否已被占用
-
-> 地址：/group/nameinuse
->
-> 请求方式： GET
-
-参数：
-
-| 字段 | 类型   | 说明     | 必需 |
-| ---- | ------ | -------- | ---- |
-| name | String | 群组名称 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明           |
-| ------ | ------ | -------------- |
-| status | int    | 状态码         |
-| msg    | String | 该名称群组数量 |
-
-示例：
-
-```JSON
-{
-    "status": 200,
-    "msg": '0'
-}
-```
-
-2. 创建群组
-
-> 地址：/group/build
->
-> 请求方式： POST
-
-参数：
-
-| 字段    | 类型   | 说明           | 必需 |
-| ------- | ------ | -------------- | ---- |
-| name    | String | 群组名称       | 是   |
-| imgUrl  | String | 群头像         | 否   |
-| friends | Array  | 群成员 id 数组 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```JSON
-{
-    "status": 200,
-    "msg": '创建成功'
-}
-```
-
-3. 根据 id 获取群组信息
-
-> 地址：/group/getgroupinfobyid
->
-> 请求方式：POST
-
-参数：
-
-| 字段    | 类型   | 说明    | 必需 |
-| ------- | ------ | ------- | ---- |
-| groupId | String | 群组 id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": {
-        "_id": "63e8f1a7437xxx8cc7ff7b",
-        "name": "mygroup",
-        "userId": "63e734b3f3xxx1166cafa05",	// 群主 id
-        "imgUrl": "http://xxx/group.png",
-        "time": "2023-12-31T14:03:19.287Z",
-    }
-}
-```
-
-4. 更改群组头像
-
-> 地址：/group/updateportrait
->
-> 请求方式：POST
-
-参数：
-
-| 字段    | 类型   | 说明         | 必需 |
-| ------- | ------ | ------------ | ---- |
-| groupId | String | 群组 id      | 是   |
-| imgUrl  | String | 头像文件链接 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '更新成功'
-}
-```
-
-5. 更改群组名称
-
-> 地址：/group/updatename
->
-> 请求方式：POST
-
-参数：
-
-| 字段    | 类型   | 说明       | 必需 |
-| ------- | ------ | ---------- | ---- |
-| groupId | String | 群组 id    | 是   |
-| newName | String | 群组新名称 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '更新成功'
-}
-```
-
-6. 更改群组公告
-
-> 地址：/group/updatenotice
->
-> 请求方式：POST
-
-参数：
-
-| 字段    | 类型   | 说明       | 必需 |
-| ------- | ------ | ---------- | ---- |
-| groupId | String | 群组 id    | 是   |
-| notice  | String | 群组新公告 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '更新成功'
-}
-```
-
-7. 邀请新成员进入群组
-
-> 地址：/group/invite
->
-> 请求方式：POST
-
-参数：
-
-| 字段    | 类型   | 说明          | 必需 |
-| ------- | ------ | ------------- | ---- |
-| groupId | String | 群组 id       | 是   |
-| userId  | String | 被邀请用户 id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '邀请成功'
-}
-```
-
-8. 移除成员同时删除其聊天记录
-
-> 地址：/group/removegroupmember
->
-> 请求方式：POST
-
-参数：
-
-| 字段     | 类型   | 说明          | 必需 |
-| -------- | ------ | ------------- | ---- |
-| groupId  | String | 群组 id       | 是   |
-| memberId | String | 被移除成员 id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '移除成功'
-}
-```
-
-9. 更改群内昵称
-
-> 地址：/group/updatenickname
->
-> 请求方式：POST
-
-参数：
-
-| 字段        | 类型   | 说明       | 必需 |
-| ----------- | ------ | ---------- | ---- |
-| groupId     | String | 群组 id    | 是   |
-| newNickName | String | 新群内昵称 | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '更新成功'
-}
-```
-
-10. 退出群组
-
-> 地址：/group/exitgroup
->
-> 请求方式：POST
-
-参数：
-
-| 字段    | 类型   | 说明    | 必需 |
-| ------- | ------ | ------- | ---- |
-| groupId | String | 群组 id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '退出成功'
-}
-```
-
-11. 解散群组
-
-> 地址：/group/breakgroup
->
-> 请求方式：POST
-
-参数：
-
-| 字段    | 类型   | 说明    | 必需 |
-| ------- | ------ | ------- | ---- |
-| groupId | String | 群组 id | 是   |
-
-返回值：
-
-| 字段   | 类型   | 说明     |
-| ------ | ------ | -------- |
-| status | int    | 状态码   |
-| msg    | String | 描述信息 |
-
-示例：
-
-```json
-{
-    "status": 200,
-    "msg": '解散成功'
-}
-```
-
-#### socket.io
-
-1. 上线
-
-方法：online(userId)
-
-| 字段   | 类型   | 说明    |
-| ------ | ------ | ------- |
-| userId | String | 用户 id |
-
-返回调用：
-
-| 方法         | 参数 | 说明                 |
-| ------------ | ---- | -------------------- |
-| forceOffline | 无   | 只能一处登录、挤下线 |
-
-2. 下线
-
-方法：offline(userId)
-
-| 字段   | 类型   | 说明    |
-| ------ | ------ | ------- |
-| userId | String | 用户 id |
-
-3. 申请添加好友
-
-方法：friendApply(data)
-
-| 字段     | 类型   | 说明     |
-| -------- | ------ | -------- |
-| friendId | String | 用户 id  |
-| content  | String | 验证消息 |
-
-返回调用：
-
-| 方法         | 参数 | 说明     |
-| ------------ | ---- | -------- |
-| receiveApply | 无   | 对方接收 |
-
-4. 同意好友请求
-
-方法：agreeApply(data)
-
-| 字段     | 类型   | 说明    |
-| -------- | ------ | ------- |
-| friendId | String | 用户 id |
-
-返回调用：
-
-| 方法          | 参数 | 说明       |
-| ------------- | ---- | ---------- |
-| acceptedApply | 无   | 被同意申请 |
-
-5. 申请加入群组
-
-方法：groupApply(data)
-
-| 字段    | 类型   | 说明            |
-| ------- | ------ | --------------- |
-| groupId | String | 群组 id         |
-| userId  | String | 加入者 id       |
-| content | String | 首条消息        |
-| types   | String | "0"（消息类型） |
-
-返回调用：
-
-| 方法               | 参数 | 说明           |
-| ------------------ | ---- | -------------- |
-| newGroupMemberJoin | 无   | 有用户加入群组 |
-
-6. 发送消息
-
-方法：sendMsg(data)
-
-| 字段      | 类型    | 说明           |
-| --------- | ------- | -------------- |
-| msg       | Object  | 消息对象       |
-| friendId  | String  | 用户 id        |
-| encrypted | Boolean | 是否为加密消息 |
-| ...       | ...     | ...            |
-
-返回调用：
-
-| 方法                | 参数     | 说明           |
-| ------------------- | -------- | -------------- |
-| receiveMsg          | 消息对象 | 接收非加密消息 |
-| receiveEncryptedMsg | 消息对象 | 接收加密消息   |
-
-7. 发送群组消息
-
-方法：sendGroupMsg(data)
-
-| 字段    | 类型   | 说明        |
-| ------- | ------ | ----------- |
-| msg     | Object | 消息对象    |
-| groupId | String | 发送群组 id |
-| ...     | ...    | ...         |
-
-返回调用：
-
-| 方法            | 参数 | 说明         |
-| --------------- | ---- | ------------ |
-| receiveGroupMsg | 无   | 接收群组消息 |
+ISC。
