@@ -43,6 +43,7 @@ dao/dbserver.js          数据访问
 dao/socketserver.js      Socket.IO 事件
 dao/emailserver.js       注册欢迎邮件
 dao/mkdirs.js            创建上传目录
+docs/API.md              接口的参数、返回值与示例
 router/index.js          跨域、token 校验，挂到 /api
 router/modules/          注册、登录、搜索、好友、聊天、资料、上传、群组
 public/                  静态文件；默认头像 user.png，上传图片也写到这里
@@ -90,6 +91,8 @@ node hine.js
 上传接口返回的图片地址前缀写死为 `http://localhost:3000`（`router/modules/uploadFile.js`）。改端口时要一起改这里，以及模型里默认头像所用的同一主机名。
 
 ## 接口概览
+
+各接口的参数、业务码和示例见 [docs/API.md](docs/API.md)。
 
 业务路由都挂在 `/api` 下。响应体由 `res.cc` 生成，形如 `{ "status": 200, "msg": ... }`。这里的 `status` 是业务码，成功为 `200`；这条响应的 HTTP 状态码通常仍是 200。未匹配的路径走 404，未捕获的异常走 500。`msg` 在成功时可能是字符串、对象或数组。
 
